@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Env
+.env
+.env.*
+!.env.example
+
+# Playwright
+test-results
+playwright-report
+blob-report
+playwright/.cache
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -26,3 +37,4 @@ dist-ssr
 # Spoiler-free
 AGENTS.md
 SPEC.md
+docs/qa-ipad.md

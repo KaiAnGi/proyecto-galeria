@@ -57,7 +57,7 @@ export async function signInWithGoogle(): Promise<string> {
           resolve(token as string)
         }
       })
-    } catch (e) {
+    } catch {
       // fallback
     }
   }

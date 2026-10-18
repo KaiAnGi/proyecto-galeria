@@ -1,37 +1,106 @@
-# Kuromi Likes Your Drawings - Mi GalerÌa
+# Kuromi Likes Your Drawings ‚Äî Mi Galer√≠a
 
-GalerÌa privada de dibujos para una sola usuaria. EspecificaciÛn completa en [SPEC.md](SPEC.md). 
+Galer√≠a privada de dibujos para una sola usuaria. Especificaci√≥n completa en
+[SPEC.md](SPEC.md).
 
-## Fase 0 - Esqueleto y prueba OAuth
+## Requisitos
+
+- Node.js 22 o superior
+- Una cuenta de Google Cloud con un Client ID de OAuth (ver m√°s abajo)
+
+## Puesta en marcha
+
+1. Instalar dependencias:
+
+   ```
+   npm install
+   ```
+
+2. Crear el archivo `.env` a partir de `.env.example` y poner tu Client ID:
+
+   ```
+   VITE_GOOGLE_CLIENT_ID=tu-client-id
+   VITE_IOS_STANDALONE=false
+   ```
+
+3. Arrancar en desarrollo:
+
+   ```
+   npm run dev
+   ```
+
+## Scripts
+
+| Script | Qu√© hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo (http://localhost:5173) |
+| `npm run build` | Comprueba tipos y genera `dist/` |
+| `npm run preview` | Sirve `dist/` en local |
+| `npm run lint` | Analiza el c√≥digo con oxlint |
+| `npm run test` | Tests unitarios con Vitest |
+| `npm run test:watch` | Vitest en modo vigilancia |
+| `npm run test:e2e` | Flujos con Playwright (Chromium y WebKit) |
+
+La primera vez hay que instalar los navegadores de Playwright:
+
+```
+npx playwright install chromium webkit
+```
+
+## Fase 0 ‚Äî Esqueleto y prueba OAuth
 
 ### Hecho
-- [x] Proyecto Vite + React + TypeScript estricto
+
+- [x] Proyecto Vite + React + TypeScript (modo estricto)
 - [x] Tailwind CSS con tokens de tema
-- [x] PWA configurado con vite-plugin-pwa (display: browser por defecto)
-- [x] HashRouter para GitHub Pages
+- [x] PWA con `vite-plugin-pwa` (`display: "browser"` por defecto)
+- [x] `HashRouter` para GitHub Pages
 - [x] Estructura de carpetas (app, features/auth, features/drive, lib, i18n, theme)
-- [x] i18n espaÒol (es.ts)
-- [x] Google Identity Services - initTokenClient con scope drive.file, login_hint, renovaciÛn silenciosa
-- [x] Drive API - b˙squeda/creaciÛn de carpeta raÌz con appProperties (kind=root), creaciÛn de subcarpetas
-- [x] Escritura/lectura de JSON de prueba (multipart upload)
-- [x] UI mÌnima: conectar Drive, mostrar carpeta raÌz, guardar/leer prueba
-- [x] DetecciÛn de bloqueador con mensaje en espaÒol
-- [x] Vitest + Playwright configurados
+- [x] Textos de interfaz en espa√±ol (`src/i18n/es.ts`)
+- [x] Google Identity Services: `initTokenClient` con scope `drive.file`,
+      token solo en memoria e intento de renovaci√≥n silenciosa
+- [x] Drive API: b√∫squeda/creaci√≥n de la carpeta ra√≠z con `appProperties`
+      (`kind=root`) y de las subcarpetas
+- [x] Escritura/lectura de un JSON de prueba (subida multipart)
+- [x] Interfaz m√≠nima: conectar Drive, ver la carpeta ra√≠z, guardar/leer prueba
+- [x] Mensaje de ayuda si un bloqueador rompe el login
+- [x] Tests unitarios (Vitest) y de flujo (Playwright, Chromium y WebKit)
 - [x] Workflow de despliegue a GitHub Pages
-- [x] Repo renombrado a proyecto-galeria y puesto en p˙blico
+- [x] Lista de prueba manual para iOS en [`docs/qa-ipad.md`](docs/qa-ipad.md)
 
-### Pendiente (antes de entrega)
-- [ ] Prueba real en iOS (iPhone/iPad) - login y comportamiento display: browser
-- [ ] Verificar Ecosia en UE usa motor propio (o no) para iOS
-- [ ] Configurar VITE_GOOGLE_CLIENT_ID en GitHub Secrets (para despliegue)
-- [ ] Probar flujo completo con dos navegadores (criterio salida Fase 0)
+### Pendiente (antes de la entrega)
 
-### ConfiguraciÛn
-1. Crear proyecto en Google Cloud Console, habilitar Google Drive API
-2. Crear OAuth Client ID (AplicaciÛn web) con orÌgenes: http://localhost:5173, https://KaiAnGi.github.io
-3. Copiar Client ID a .env: VITE_GOOGLE_CLIENT_ID=tu-client-id
-4. 
-pm install && npm run dev
+- [ ] Prueba real en iOS (iPhone/iPad): login y comportamiento `display: browser`
+- [ ] Verificar si Ecosia en la UE usa su propio motor en iOS
+- [ ] Probar el flujo completo en dos navegadores (criterio de salida de Fase 0)
+- [ ] Configurar `VITE_GOOGLE_CLIENT_ID` en GitHub Secrets para el despliegue
 
-### Despliegue
-Push a main dispara workflow. Configurar GitHub Pages: Settings > Pages > Source: GitHub Actions. AÒadir VITE_GOOGLE_CLIENT_ID en Settings > Secrets and variables > Actions.
+## Configuraci√≥n de Google Cloud
+
+1. Crear un proyecto en Google Cloud Console y habilitar la **Google Drive API**.
+2. Configurar la pantalla de consentimiento OAuth (tipo **Externo**) con el
+   scope `https://www.googleapis.com/auth/drive.file`.
+3. Publicar la app ("En producci√≥n"). En modo "Testing" la sesi√≥n caduca a
+   los 7 d√≠as.
+4. Crear una credencial **ID de cliente OAuth** de tipo "Aplicaci√≥n web" con
+   estos or√≠genes autorizados:
+   - `http://localhost:5173`
+   - `https://<usuario>.github.io`
+5. Copiar el Client ID a `.env` (`VITE_GOOGLE_CLIENT_ID`). Es p√∫blico y puede
+   ir en el repositorio.
+
+## Despliegue
+
+Cada push a `main` dispara el workflow de GitHub Pages. Para activarlo:
+
+1. Settings ‚Üí Pages ‚Üí Source: **GitHub Actions**.
+2. Settings ‚Üí Secrets and variables ‚Üí Actions ‚Üí a√±adir
+   `VITE_GOOGLE_CLIENT_ID`.
+
+## Nota sobre iOS
+
+Por defecto la app se abre en iOS como una pesta√±a normal de Safari
+(`display: "browser"` y sin `apple-mobile-web-app-capable`). El interruptor
+`VITE_IOS_STANDALONE=true` activa el modo pantalla completa, pero no debe
+usarse hasta probarlo en un iPhone o iPad real (el login de Google en modo
+standalone tiene problemas conocidos).
