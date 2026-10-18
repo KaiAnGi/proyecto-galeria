@@ -16,7 +16,34 @@
     testSaved: 'Archivo de prueba guardado',
     testLoaded: 'Archivo de prueba leído',
   },
+  gallery: {
+    title: 'Mis obras',
+    add: 'Añadir dibujo',
+    camera: 'Fotografiar dibujo',
+    pick: 'Elegir de la galería',
+    dropHint: 'Arrastra imágenes, pégalas o usa uno de estos botones.',
+    uploading: 'Subiendo...',
+    uploadError: 'No se han podido subir los dibujos.',
+    empty: 'Aquí no hay nada... todavía.',
+    noImage: 'Sin imagen',
+    untitled: 'Sin título',
+    undo: 'Deshacer',
+    trashed: 'Movido a la papelera',
+  },
+  obra: {
+    back: '← Volver',
+    notFound: 'No se ha encontrado la obra.',
+    notes: 'Notas',
+    noNotes: 'Sin notas.',
+    notesPlaceholder: 'Escribe aquí...',
+    techniques: 'Técnicas',
+    titlePlaceholder: 'Sin título',
+    trash: 'Borrar',
+    deleteConfirm: '¿Borrar esta obra? Se moverá a la papelera.',
+    title: 'Título',
+    fecha: 'Fecha',
+    estado: 'Estado',
+  },
 } as const
 
 export type Es = typeof es
-
