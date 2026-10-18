@@ -6,7 +6,7 @@ import { useGalleryStore } from './store'
 import { getToken } from '../auth/googleAuth'
 import { findRootFolder, createFolder } from '../drive/driveClient'
 
-async function ensureFolder(token: string, rootId: string, name: string, kind: string): Promise<string> {
+export async function ensureFolder(token: string, rootId: string, name: string, kind: string): Promise<string> {
   const q = encodeURIComponent(`name='${name}' and trashed=false and '${rootId}' in parents`)
   const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`
   const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } })
@@ -19,7 +19,19 @@ async function ensureFolder(token: string, rootId: string, name: string, kind: s
   return created.id
 }
 
-async function getFolderIds(token: string): Promise<{ rootId: string; archivosId: string; originalesId: string; galeriaId: string; miniaturasId: string; datosId: string; obrasId: string }> {
+export interface FolderIds {
+  rootId: string
+  archivosId: string
+  originalesId: string
+  galeriaId: string
+  miniaturasId: string
+  datosId: string
+  obrasId: string
+  coleccionesId: string
+  secuenciasId: string
+}
+
+export async function getFolderIds(token: string): Promise<FolderIds> {
   const root = await findRootFolder(token)
   if (!root) throw new Error('Raíz no encontrada')
   let archivosId: string | null = null
@@ -53,8 +65,20 @@ async function getFolderIds(token: string): Promise<{ rootId: string; archivosId
   const galeriaId = await ensureFolder(token, archivosId, 'galeria', 'galeria')
   const miniaturasId = await ensureFolder(token, archivosId, 'miniaturas', 'miniaturas')
   const obrasId = await ensureFolder(token, datosId, 'obras', 'obras')
+  const coleccionesId = await ensureFolder(token, datosId, 'colecciones', 'colecciones')
+  const secuenciasId = await ensureFolder(token, datosId, 'secuencias', 'secuencias')
 
-  return { rootId: root.id, archivosId, originalesId, galeriaId, miniaturasId, datosId, obrasId }
+  return {
+    rootId: root.id,
+    archivosId,
+    originalesId,
+    galeriaId,
+    miniaturasId,
+    datosId,
+    obrasId,
+    coleccionesId,
+    secuenciasId,
+  }
 }
 
 export async function uploadDrawings(files: File[]): Promise<Obra[]> {

@@ -2,6 +2,8 @@ import { useRef, useState, useEffect } from 'react'
 import { useGalleryStore } from '../features/gallery/store'
 import { Link } from 'react-router-dom'
 import { uploadDrawings } from '../features/gallery/upload'
+import { ensureLoaded, trashObra } from '../features/gallery/persistence'
+import { getToken } from '../features/auth/googleAuth'
 import { es } from '../i18n/es'
 
 export default function Gallery() {
@@ -16,13 +18,24 @@ export default function Gallery() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    const token = getToken()
+    if (!token) return
+    ensureLoaded(token).catch(() => {
+      // sin conexión: se muestra lo que ya hubiera en memoria
+    })
+  }, [])
+
+  useEffect(() => {
     if (!undoId) return
     const t = setTimeout(() => {
+      const obra = trashedById[undoId]
+      const token = getToken()
       clearTrashUndo(undoId)
       setUndoId(null)
+      if (obra && token) trashObra(token, obra).catch(() => undefined)
     }, 5000)
     return () => clearTimeout(t)
-  }, [undoId, clearTrashUndo])
+  }, [undoId, trashedById, clearTrashUndo])
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return

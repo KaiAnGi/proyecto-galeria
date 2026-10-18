@@ -17,22 +17,6 @@ export interface Archivo {
   ajustes?: { brillo: number; contraste: number; blanquearPapel: boolean }
 }
 
-export interface Archivo {
-  id: string
-  tipo: 'imagen' | 'gif' | 'video' | 'otro'
-  rol: 'tradicional' | 'digital' | 'proceso' | 'referencia'
-  etapa?: 'boceto' | 'lineart' | 'color' | 'final'
-  orden: number
-  mime: string
-  bytes?: number
-  ancho?: number
-  alto?: number
-  tomadaEn?: string
-  drive: { originalId: string; galeriaId?: string; miniaturaId?: string }
-  recorte?: { esquinas: [number, number, number, number][] | any }
-  ajustes?: { brillo: number; contraste: number; blanquearPapel: boolean }
-}
-
 export interface Obra {
   schema: 1
   id: string
@@ -83,6 +67,8 @@ interface GalleryState {
   addSecuencia: (s: Secuencia) => void
   updateSecuencia: (id: string, patch: Partial<Secuencia>) => void
   removeSecuencia: (id: string) => void
+  hydrate: (state: Partial<GalleryState>) => void
+  persist: () => void
 }
 
 export const useGalleryStore = create<GalleryState>((set) => ({
@@ -145,4 +131,16 @@ export const useGalleryStore = create<GalleryState>((set) => ({
       secuencias: state.secuencias.map((s) => (s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s)),
     })),
   removeSecuencia: (id) => set((state) => ({ secuencias: state.secuencias.filter((s) => s.id !== id) })),
+  hydrate: (state) => set((prev) => ({ ...prev, ...state })),
+  persist: () => {
+    const s = useGalleryStore.getState()
+    import('../../lib/cache/idbCache').then(({ saveCache }) => {
+      saveCache({
+        obras: s.obras,
+        colecciones: s.colecciones,
+        secuencias: s.secuencias,
+        lastSyncedAt: new Date().toISOString(),
+      }).catch(() => undefined)
+    })
+  },
 }))

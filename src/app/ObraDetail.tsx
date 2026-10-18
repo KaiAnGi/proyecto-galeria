@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import ZoomableImage from '../features/gallery/ZoomableImage'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
+import { saveObra } from '../features/gallery/persistence'
 import { getToken } from '../features/auth/googleAuth'
 import { es } from '../i18n/es'
 
@@ -24,7 +25,7 @@ export default function ObraDetail() {
     const token = getToken()
     if (!galeriaId || !token) return
     downloadFileAsBlob(token, galeriaId)
-      .then((blob) => {
+      .then((blob: Blob) => {
         if (cancelled) return
         objUrl = URL.createObjectURL(blob)
         setGalleryState({ id: galeriaId, url: objUrl })
@@ -59,13 +60,23 @@ export default function ObraDetail() {
   const archivo = obra.archivos[0]
 
   function saveTitle() {
-    if (!id) return
-    if (titleDraft !== obra!.titulo) updateObra(id, { titulo: titleDraft.trim() || es.obra.titlePlaceholder })
+    if (!id || !obra) return
+    if (titleDraft !== obra.titulo) {
+      const newTitle = titleDraft.trim() || es.obra.titlePlaceholder
+      updateObra(id, { titulo: newTitle })
+      const token = getToken()
+      if (token) saveObra(token, { ...obra, titulo: newTitle, updatedAt: new Date().toISOString() }).catch(() => undefined)
+    }
   }
 
   function saveNotes() {
-    if (!id) return
-    if (notesDraft !== (obra!.notas ?? '')) updateObra(id, { notas: notesDraft.trim() || undefined })
+    if (!id || !obra) return
+    if (notesDraft !== (obra.notas ?? '')) {
+      const newNotes = notesDraft.trim() || undefined
+      updateObra(id, { notas: newNotes })
+      const token = getToken()
+      if (token) saveObra(token, { ...obra, notas: newNotes, updatedAt: new Date().toISOString() }).catch(() => undefined)
+    }
   }
 
   function handleTrash() {

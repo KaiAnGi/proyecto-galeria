@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGalleryStore } from '../features/gallery/store'
 import { Link } from 'react-router-dom'
 import { ulid } from 'ulidx'
+import { saveColeccion, ensureLoaded } from '../features/gallery/persistence'
+import { getToken } from '../features/auth/googleAuth'
 
 export default function Colecciones() {
   const colecciones = useGalleryStore((s) => s.colecciones)
@@ -9,17 +11,26 @@ export default function Colecciones() {
   const [name, setName] = useState('')
   const [tipo, setTipo] = useState<'general' | 'cuaderno' | 'clase'>('general')
 
+  useEffect(() => {
+    const token = getToken()
+    if (!token) return
+    ensureLoaded(token).catch(() => undefined)
+  }, [])
+
   function crear() {
     if (!name.trim()) return
-    addColeccion({
-      schema: 1,
+    const c = {
+      schema: 1 as const,
       id: ulid(),
       rev: 1,
       updatedAt: new Date().toISOString(),
       nombre: name.trim(),
       tipo,
       orden: colecciones.length,
-    })
+    }
+    addColeccion(c)
+    const token = getToken()
+    if (token) saveColeccion(token, c).catch(() => undefined)
     setName('')
   }
 
