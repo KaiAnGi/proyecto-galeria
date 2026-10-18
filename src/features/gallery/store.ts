@@ -1,4 +1,21 @@
 import { create } from 'zustand'
+import type { Secuencia } from './secuencias'
+
+export interface Archivo {
+  id: string
+  tipo: 'imagen' | 'gif' | 'video' | 'otro'
+  rol: 'tradicional' | 'digital' | 'proceso' | 'referencia'
+  etapa?: 'boceto' | 'lineart' | 'color' | 'final'
+  orden: number
+  mime: string
+  bytes?: number
+  ancho?: number
+  alto?: number
+  tomadaEn?: string
+  drive: { originalId: string; galeriaId?: string; miniaturaId?: string }
+  recorte?: { esquinas: [number, number, number, number][] | any }
+  ajustes?: { brillo: number; contraste: number; blanquearPapel: boolean }
+}
 
 export interface Archivo {
   id: string
@@ -52,6 +69,7 @@ export interface Coleccion {
 interface GalleryState {
   obras: Obra[]
   colecciones: Coleccion[]
+  secuencias: Secuencia[]
   addObra: (obra: Obra) => void
   updateObra: (id: string, patch: Partial<Obra>) => void
   removeObraSoft: (id: string) => void
@@ -62,11 +80,15 @@ interface GalleryState {
   removeColeccion: (id: string) => void
   addObraToColeccion: (obraId: string, coleccionId: string, orden?: number) => void
   removeObraFromColeccion: (obraId: string, coleccionId: string) => void
+  addSecuencia: (s: Secuencia) => void
+  updateSecuencia: (id: string, patch: Partial<Secuencia>) => void
+  removeSecuencia: (id: string) => void
 }
 
 export const useGalleryStore = create<GalleryState>((set) => ({
   obras: [],
   colecciones: [],
+  secuencias: [],
   addObra: (obra) => set((state) => ({ obras: [obra, ...state.obras] })),
   updateObra: (id, patch) =>
     set((state) => ({
@@ -117,4 +139,10 @@ export const useGalleryStore = create<GalleryState>((set) => ({
         return { ...o, coleccionIds: nextIds, ordenEnColeccion: nextOrden, updatedAt: new Date().toISOString() }
       }),
     })),
+  addSecuencia: (s) => set((state) => ({ secuencias: [s, ...state.secuencias] })),
+  updateSecuencia: (id, patch) =>
+    set((state) => ({
+      secuencias: state.secuencias.map((s) => (s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s)),
+    })),
+  removeSecuencia: (id) => set((state) => ({ secuencias: state.secuencias.filter((s) => s.id !== id) })),
 }))
