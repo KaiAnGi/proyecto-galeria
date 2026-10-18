@@ -10,12 +10,72 @@ export async function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
+function orientationNeedsFlip(orientation: number) {
+  return orientation >= 5 && orientation <= 8
+}
+
 export async function fileToBitmap(file: File): Promise<ImageBitmap> {
-  if (file.type.includes('heic') || file.type.includes('HEIC') || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
-    const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 }) as Blob
+  let blob: Blob = file
+  if (file.type.includes('heic') || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+    blob = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob
+  }
+
+  const orientation = await getOrientation(file).catch(() => undefined)
+
+  if (!orientation || orientation === 1) {
     return await createImageBitmap(blob)
   }
-  return await createImageBitmap(file)
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(blob)
+    const el = new Image()
+    el.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(el)
+    }
+    el.onerror = (err) => {
+      URL.revokeObjectURL(url)
+      reject(err)
+    }
+    el.src = url
+  })
+
+  const flip = orientationNeedsFlip(orientation)
+  const w = flip ? img.height : img.width
+  const h = flip ? img.width : img.height
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas context unavailable')
+
+  // Apply EXIF orientation transforms (common cases)
+  switch (orientation) {
+    case 2:
+      ctx.translate(w, 0); ctx.scale(-1, 1); break
+    case 3:
+      ctx.translate(w, h); ctx.rotate(Math.PI); break
+    case 4:
+      ctx.translate(0, h); ctx.scale(1, -1); break
+    case 5:
+      ctx.rotate(0.5 * Math.PI); ctx.scale(1, -1); break
+    case 6:
+      ctx.rotate(0.5 * Math.PI); ctx.translate(0, -h); break
+    case 7:
+      ctx.rotate(0.5 * Math.PI); ctx.translate(w, -h); ctx.scale(-1, 1); break
+    case 8:
+      ctx.rotate(-0.5 * Math.PI); ctx.translate(-w, 0); break
+    default:
+      break
+  }
+
+  if (flip) {
+    ctx.drawImage(img, 0, 0, img.width, img.height)
+  } else {
+    ctx.drawImage(img, 0, 0, img.width, img.height)
+  }
+
+  return await createImageBitmap(canvas)
 }
 
 export async function loadImage(src: string): Promise<HTMLImageElement> {

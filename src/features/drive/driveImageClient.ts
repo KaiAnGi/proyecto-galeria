@@ -33,6 +33,32 @@ export async function uploadBlob(
   return res.json()
 }
 
+export async function uploadJson(
+  token: string,
+  data: unknown,
+  name: string,
+  parents: string[],
+  appProps?: Record<string, string>,
+): Promise<UploadedFile> {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const metadata = {
+    name,
+    parents,
+    appProperties: appProps,
+  }
+  const form = new FormData()
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }))
+  form.append('file', blob, name)
+  const url = DRIVE_UPLOAD + '/files?uploadType=multipart&fields=id,name,mimeType,modifiedTime,appProperties'
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token },
+    body: form,
+  })
+  if (!res.ok) throw new Error('Upload error: ' + res.status)
+  return res.json()
+}
+
 export async function downloadFileAsBlob(token: string, fileId: string, _mimeHint?: string): Promise<Blob> {
   const url = DRIVE_API + '/files/' + fileId + '?alt=media'
   const res = await fetch(url, {

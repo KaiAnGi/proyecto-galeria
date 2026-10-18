@@ -1,6 +1,6 @@
 import { ulid } from 'ulidx'
 import { fileToBitmap, resizeToMaxDimensions, createMiniDataUrl, determineMime } from '../../lib/image/imageProcessor'
-import { uploadBlob } from '../drive/driveImageClient'
+import { uploadBlob, uploadJson } from '../drive/driveImageClient'
 import type { Obra, Archivo } from './store'
 import { useGalleryStore } from './store'
 import { getToken } from '../auth/googleAuth'
@@ -19,13 +19,11 @@ async function ensureFolder(token: string, rootId: string, name: string, kind: s
   return created.id
 }
 
-async function getFolderIds(token: string): Promise<{ rootId: string; archivosId: string; originalesId: string; galeriaId: string; miniaturasId: string }> {
+async function getFolderIds(token: string): Promise<{ rootId: string; archivosId: string; originalesId: string; galeriaId: string; miniaturasId: string; datosId: string; obrasId: string }> {
   const root = await findRootFolder(token)
   if (!root) throw new Error('Raíz no encontrada')
   let archivosId: string | null = null
-  let originalesId: string | null = null
-  let galeriaId: string | null = null
-  let miniaturasId: string | null = null
+  let datosId: string | null = null
 
   const qArch = encodeURIComponent(`name='archivos' and trashed=false and '${root.id}' in parents`)
   const urlArch = `https://www.googleapis.com/drive/v3/files?q=${qArch}&fields=files(id,name)`
@@ -39,11 +37,24 @@ async function getFolderIds(token: string): Promise<{ rootId: string; archivosId
     archivosId = created.id
   }
 
-  originalesId = await ensureFolder(token, archivosId, 'originales', 'originales')
-  galeriaId = await ensureFolder(token, archivosId, 'galeria', 'galeria')
-  miniaturasId = await ensureFolder(token, archivosId, 'miniaturas', 'miniaturas')
+  const qDatos = encodeURIComponent(`name='_datos' and trashed=false and '${root.id}' in parents`)
+  const urlDatos = `https://www.googleapis.com/drive/v3/files?q=${qDatos}&fields=files(id,name)`
+  const resDatos = await fetch(urlDatos, { headers: { Authorization: 'Bearer ' + token } })
+  if (resDatos.ok) {
+    const d = await resDatos.json()
+    datosId = (d.files || [])[0]?.id || null
+  }
+  if (!datosId) {
+    const created = await createFolder(token, '_datos', [root.id], { kind: 'datos', rootId: root.id })
+    datosId = created.id
+  }
 
-  return { rootId: root.id, archivosId, originalesId, galeriaId, miniaturasId }
+  const originalesId = await ensureFolder(token, archivosId, 'originales', 'originales')
+  const galeriaId = await ensureFolder(token, archivosId, 'galeria', 'galeria')
+  const miniaturasId = await ensureFolder(token, archivosId, 'miniaturas', 'miniaturas')
+  const obrasId = await ensureFolder(token, datosId, 'obras', 'obras')
+
+  return { rootId: root.id, archivosId, originalesId, galeriaId, miniaturasId, datosId, obrasId }
 }
 
 export async function uploadDrawings(files: File[]): Promise<Obra[]> {
@@ -66,12 +77,14 @@ export async function uploadDrawings(files: File[]): Promise<Obra[]> {
     const galeriaBlobFinal = galeriaMime === 'image/webp' ? galeriaBlob : await resizeToMaxDimensions(bmp, 2400, 'image/jpeg', 0.85)
 
     const miniDataUrl = await createMiniDataUrl(bmp, 480, 0.8)
+    const miniBlob = await (await fetch(miniDataUrl)).blob()
+    await uploadBlob(token, miniBlob, `${id}-mini.webp`, [folders.miniaturasId], { kind: 'miniatura', obraId: id })
+
 
     const originalName = `${id}-original`
     const galeriaNameFinal = galeriaBlobFinal.type.includes('jpeg') || galeriaBlobFinal.type.includes('jpg') ? `${id}.jpg` : `${id}.webp`
     const upOrig = await uploadBlob(token, originalBlob, originalName, [folders.originalesId], { kind: 'original', obraId: id })
     const upGal = await uploadBlob(token, galeriaBlobFinal, galeriaNameFinal, [folders.galeriaId], { kind: 'galeria', obraId: id })
-
     const archivo: Archivo = {
       id: ulid(),
       tipo: 'imagen',
@@ -103,6 +116,8 @@ export async function uploadDrawings(files: File[]): Promise<Obra[]> {
       miniatura: miniDataUrl,
       archivos: [archivo],
     }
+
+    await uploadJson(token, obra, `obra-${id}.json`, [folders.obrasId], { kind: 'obra', id })
 
     useGalleryStore.getState().addObra(obra)
     obras.push(obra)
