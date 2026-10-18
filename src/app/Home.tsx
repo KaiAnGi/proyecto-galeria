@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { es } from '../i18n/es'
 import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../features/auth/googleAuth'
 import { initDriveStructure, saveTestFile, loadTestFile } from '../features/drive/driveClient'
+import { exportAllToZip } from '../lib/export/zipExport'
+import { useGalleryStore } from '../features/gallery/store'
 
 export default function Home() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'connected' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [rootId, setRootId] = useState<string | null>(null)
   const [testData, setTestData] = useState<any>(null)
+  const [exporting, setExporting] = useState(false)
 
   async function handleConnect() {
     setStatus('loading')
@@ -52,6 +56,24 @@ export default function Home() {
     }
   }
 
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const s = useGalleryStore.getState()
+      const blob = await exportAllToZip({ obras: s.obras, colecciones: s.colecciones, secuencias: s.secuencias })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'mi-galeria.zip'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert(es.app.exportError)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-6 gap-6">
       <h1 className="text-3xl font-bold">{es.app.title}</h1>
@@ -78,6 +100,24 @@ export default function Home() {
           <p>
             {es.app.rootFolderId}: {rootId}
           </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link to="/galeria" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--primary)] text-[var(--text)]">
+              {es.app.goGallery}
+            </Link>
+            <Link to="/colecciones" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
+              {es.app.goCollections}
+            </Link>
+            <Link to="/pencil-test" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
+              {es.app.goPencilTest}
+            </Link>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)] disabled:opacity-60"
+            >
+              {exporting ? es.app.exporting : es.app.exportZip}
+            </button>
+          </div>
           <div className="flex gap-4">
             <button onClick={handleSaveTest} className="min-h-[44px] px-4 py-2 rounded-lg bg-[var(--surface)]">
               {es.app.testWrite}

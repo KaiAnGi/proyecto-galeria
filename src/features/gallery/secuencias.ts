@@ -15,3 +15,7 @@ export interface Secuencia {
   frames: Frame[]
   miniatura: string
 }
+
+export function withUpdatedAt<T extends object>(value: T): T & { updatedAt: string } {
+  return { ...value, updatedAt: new Date().toISOString() }
+}

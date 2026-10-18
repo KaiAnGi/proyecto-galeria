@@ -1,24 +1,25 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import { ulid } from 'ulidx'
 import { getToken } from '../features/auth/googleAuth'
 import { saveSecuencia, ensureLoaded } from '../features/gallery/persistence'
 import { uploadFrames } from '../features/gallery/pencilUpload'
+import { withUpdatedAt } from '../features/gallery/secuencias'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
 
 export default function PencilTest() {
   const secuencias = useGalleryStore((s) => s.secuencias)
   const addSecuencia = useGalleryStore((s) => s.addSecuencia)
+  const updateSecuencia = useGalleryStore((s) => s.updateSecuencia)
   const [files, setFiles] = useState<File[]>([])
   const [fps, setFps] = useState(12)
   const [titulo, setTitulo] = useState('Pencil test')
   const [playing, setPlaying] = useState(false)
   const [onion, setOnion] = useState(0.4)
   const [currentSecId, setCurrentSecId] = useState<string | null>(null)
+  const [index, setIndex] = useState(0)
   const [urls, setUrls] = useState<string[]>([])
-  const canvasPrevRef = useRef<HTMLCanvasElement>(null)
-  const canvasCurrRef = useRef<HTMLCanvasElement>(null)
 
   const sec = secuencias.find((s) => s.id === currentSecId) || secuencias[0]
 
@@ -29,31 +30,26 @@ export default function PencilTest() {
   }, [])
 
   useEffect(() => {
-    if (!sec || !sec.frames.length) {
-      setUrls([])
-      return
-    }
     const token = getToken()
     if (!token) return
     let cancelled = false
     const objUrls: string[] = []
+    const frames = sec ? sec.frames.slice().sort((a, b) => a.orden - b.orden) : []
     Promise.all(
-      sec.frames
-        .slice()
-        .sort((a, b) => a.orden - b.orden)
-        .map((f) =>
-          downloadFileAsBlob(token, f.drive.galeriaId)
-            .then((blob) => {
-              if (cancelled) return ''
-              const u = URL.createObjectURL(blob)
-              objUrls.push(u)
-              return u
-            })
-            .catch(() => ''),
-        ),
+      frames.map((f) =>
+        downloadFileAsBlob(token, f.drive.galeriaId)
+          .then((blob) => {
+            if (cancelled) return ''
+            const u = URL.createObjectURL(blob)
+            objUrls.push(u)
+            return u
+          })
+          .catch(() => ''),
+      ),
     ).then((res) => {
       if (cancelled) return
       setUrls(res.filter((x) => x))
+      setIndex(0)
     })
     return () => {
       cancelled = true
@@ -63,25 +59,38 @@ export default function PencilTest() {
 
   useEffect(() => {
     if (!playing || urls.length === 0) return
-    const interval = setInterval(() => {}, 1000 / Math.min(24, Math.max(6, fps)))
+    const interval = setInterval(() => {
+      setIndex((i) => (i + 1) % urls.length)
+    }, 1000 / Math.min(24, Math.max(6, fps)))
     return () => clearInterval(interval)
   }, [playing, urls, fps])
+
+  function moveFrame(from: number, to: number) {
+    if (!sec) return
+    const sorted = sec.frames.slice().sort((a, b) => a.orden - b.orden)
+    if (to < 0 || to >= sorted.length) return
+    const [f] = sorted.splice(from, 1)
+    sorted.splice(to, 0, f)
+    const frames = sorted.map((fr, i) => ({ ...fr, orden: i }))
+    updateSecuencia(sec.id, { frames })
+    const token = getToken()
+    if (token) saveSecuencia(token, withUpdatedAt({ ...sec, frames })).catch(() => undefined)
+  }
 
   async function createFromFiles() {
     if (files.length === 0) return
     const uploaded = await uploadFrames(files)
     const frames = uploaded.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
-    const s = {
+    const s = withUpdatedAt({
       schema: 1 as const,
       id: ulid(),
       rev: 1,
-      updatedAt: new Date().toISOString(),
       titulo: titulo || 'Pencil test',
       fps: Math.min(24, Math.max(6, fps)),
       bucle: true,
       frames,
       miniatura: uploaded[0]?.miniDataUrl || '',
-    }
+    })
     addSecuencia(s)
     const token = getToken()
     if (token) saveSecuencia(token, s).catch(() => undefined)
@@ -108,10 +117,60 @@ export default function PencilTest() {
         </label>
       </div>
 
-      {secuencias[0] && secuencias[0].frames.length > 0 && (
-        <div className="flex gap-4">
-          <canvas ref={canvasPrevRef} width={640} height={480} className="bg-black border border-[var(--border)]" style={{ opacity: onion }} />
-          <canvas ref={canvasCurrRef} width={640} height={480} className="bg-black border border-[var(--border)]" />
+      {sec && urls.length > 0 && (
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative w-full max-w-3xl aspect-[4/3] bg-black border border-[var(--border)] rounded overflow-hidden">
+            {urls[(index - 1 + urls.length) % urls.length] && onion > 0 && (
+              <img
+                src={urls[(index - 1 + urls.length) % urls.length]}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain"
+                style={{ opacity: onion }}
+              />
+            )}
+            {urls[index % urls.length] && (
+              <img
+                src={urls[index % urls.length]}
+                alt="Fotograma actual"
+                className="absolute inset-0 w-full h-full object-contain"
+              />
+            )}
+          </div>
+          <p className="text-sm text-[var(--muted)]">
+            Fotograma {(index % urls.length) + 1} de {urls.length}
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {sec.frames
+              .slice()
+              .sort((a, b) => a.orden - b.orden)
+              .map((f, i) => (
+                <div key={f.id} className="flex flex-col items-center gap-1">
+                  <img
+                    src={urls[i]}
+                    alt={`Fotograma ${i + 1}`}
+                    className="w-20 h-16 object-cover bg-black border border-[var(--border)] rounded"
+                  />
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => moveFrame(i, i - 1)}
+                      disabled={i === 0}
+                      aria-label="Mover antes"
+                      className="min-w-[44px] min-h-[44px] rounded bg-[var(--bg)] border border-[var(--border)] disabled:opacity-40"
+                    >
+                      ◀
+                    </button>
+                    <button
+                      onClick={() => moveFrame(i, i + 1)}
+                      disabled={i === sec.frames.length - 1}
+                      aria-label="Mover después"
+                      className="min-w-[44px] min-h-[44px] rounded bg-[var(--bg)] border border-[var(--border)] disabled:opacity-40"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </div>

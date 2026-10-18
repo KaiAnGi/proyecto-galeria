@@ -68,7 +68,6 @@ interface GalleryState {
   updateSecuencia: (id: string, patch: Partial<Secuencia>) => void
   removeSecuencia: (id: string) => void
   hydrate: (state: Partial<GalleryState>) => void
-  persist: () => void
 }
 
 export const useGalleryStore = create<GalleryState>((set) => ({
@@ -132,15 +131,4 @@ export const useGalleryStore = create<GalleryState>((set) => ({
     })),
   removeSecuencia: (id) => set((state) => ({ secuencias: state.secuencias.filter((s) => s.id !== id) })),
   hydrate: (state) => set((prev) => ({ ...prev, ...state })),
-  persist: () => {
-    const s = useGalleryStore.getState()
-    import('../../lib/cache/idbCache').then(({ saveCache }) => {
-      saveCache({
-        obras: s.obras,
-        colecciones: s.colecciones,
-        secuencias: s.secuencias,
-        lastSyncedAt: new Date().toISOString(),
-      }).catch(() => undefined)
-    })
-  },
 }))

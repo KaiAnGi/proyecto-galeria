@@ -15,6 +15,12 @@
     rootFolderId: 'Carpeta raíz',
     testSaved: 'Archivo de prueba guardado',
     testLoaded: 'Archivo de prueba leído',
+    goGallery: 'Ver mis obras',
+    goCollections: 'Colecciones',
+    goPencilTest: 'Pencil test',
+    exportZip: 'Descargar copia (ZIP)',
+    exporting: 'Preparando la copia...',
+    exportError: 'No se ha podido preparar la copia.',
   },
   gallery: {
     title: 'Mis obras',
