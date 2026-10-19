@@ -2,67 +2,6 @@ interface StickerProps {
   className?: string
 }
 
-export function KuromiSticker({ className }: StickerProps) {
-  return (
-    <svg
-      viewBox="0 0 128 128"
-      width="128"
-      height="128"
-      className={className}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g strokeLinejoin="round" strokeLinecap="round">
-        <g fill="#ffffff" stroke="#ffffff" strokeWidth="11">
-          <path d="M52 44 C40 34 27 24 25 14 C24 7 31 7 37 15 C44 24 54 34 60 40 Z" />
-          <path d="M76 44 C88 34 101 24 103 14 C104 7 97 7 91 15 C84 24 74 34 68 40 Z" />
-          <circle cx="24" cy="12" r="6.5" />
-          <circle cx="104" cy="12" r="6.5" />
-          <circle cx="64" cy="76" r="42" />
-        </g>
-        <path
-          d="M52 44 C40 34 27 24 25 14 C24 7 31 7 37 15 C44 24 54 34 60 40 Z"
-          fill="#1b1130"
-        />
-        <path
-          d="M76 44 C88 34 101 24 103 14 C104 7 97 7 91 15 C84 24 74 34 68 40 Z"
-          fill="#1b1130"
-        />
-        <circle cx="64" cy="76" r="42" fill="#1b1130" />
-        <circle cx="24" cy="12" r="6.5" fill="#ff4fa3" />
-        <circle cx="104" cy="12" r="6.5" fill="#ff4fa3" />
-        <circle cx="21.8" cy="9.8" r="2" fill="#ffffff" opacity="0.65" />
-        <circle cx="101.8" cy="9.8" r="2" fill="#ffffff" opacity="0.65" />
-
-        <ellipse cx="64" cy="86" rx="29" ry="25" fill="#fff2f8" />
-
-        <circle cx="64" cy="48" r="12.5" fill="#f7f2fb" />
-        <rect x="56.5" y="57" width="15" height="9" rx="3.5" fill="#f7f2fb" />
-        <ellipse cx="59.5" cy="49" rx="3" ry="3.6" fill="#1b1130" />
-        <ellipse cx="68.5" cy="49" rx="3" ry="3.6" fill="#1b1130" />
-        <path d="M61.4 53 H66.6 L64 57.4 Z" fill="#1b1130" />
-
-        <g fill="#ff4fa3" stroke="#ffffff" strokeWidth="1.6">
-          <path d="M47 50 L38 45 L38 55 Z" />
-          <path d="M47 50 L54 46 L54 54 Z" />
-          <circle cx="47" cy="50" r="3" />
-        </g>
-
-        <ellipse cx="52" cy="84" rx="7.5" ry="8.5" fill="#17101f" />
-        <ellipse cx="76" cy="84" rx="7.5" ry="8.5" fill="#17101f" />
-        <circle cx="54.5" cy="80.5" r="3" fill="#ffffff" />
-        <circle cx="49.5" cy="87" r="1.5" fill="#ffffff" opacity="0.85" />
-        <circle cx="78.5" cy="80.5" r="3" fill="#ffffff" />
-        <circle cx="73.5" cy="87" r="1.5" fill="#ffffff" opacity="0.85" />
-        <ellipse cx="39" cy="94" rx="6.5" ry="3.6" fill="#ff8ac6" opacity="0.6" />
-        <ellipse cx="89" cy="94" rx="6.5" ry="3.6" fill="#ff8ac6" opacity="0.6" />
-        <path d="M56 96 C59 103 69 103 72 96 C67 99.5 61 99.5 56 96 Z" fill="#17101f" />
-        <path d="M59.5 97.5 L62 101.5 L63.5 97 Z" fill="#ffffff" />
-      </g>
-    </svg>
-  )
-}
-
 export function SkullBowSticker({ className }: StickerProps) {
   return (
     <svg

@@ -12,7 +12,7 @@ import {
 } from '../features/gallery/filters'
 import { getToken } from '../features/auth/googleAuth'
 import { es } from '../i18n/es'
-import { KuromiSticker, SkullBowSticker } from '../components/Stickers'
+import { SkullBowSticker } from '../components/Stickers'
 import { PlusIcon, CameraIcon, ImagesIcon, SearchIcon } from '../components/Icons'
 
 export default function Gallery() {
@@ -84,7 +84,12 @@ export default function Gallery() {
     <div className="min-h-full p-4 sm:p-6 flex flex-col gap-6">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 fade-up">
-          <KuromiSticker className="hidden sm:block w-14 h-14 shrink-0 sticker-shadow sticker-float" />
+          <img
+            src="./icon.png"
+            alt=""
+            aria-hidden="true"
+            className="hidden sm:block w-14 h-14 shrink-0 sticker-shadow sticker-float object-contain"
+          />
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold gradient-text truncate">{es.gallery.title}</h1>
             {obras.length > 0 && <p className="text-xs text-[var(--muted)]">{es.gallery.count(obras.length)}</p>}
@@ -217,7 +222,12 @@ export default function Gallery() {
       <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {obras.length === 0 ? (
           <div className="col-span-full flex flex-col items-center text-center gap-3 py-10">
-            <KuromiSticker className="w-24 h-24 sticker-shadow sticker-float pop-in" />
+            <img
+              src="./icon.png"
+              alt=""
+              aria-hidden="true"
+              className="w-24 h-24 sticker-shadow sticker-float pop-in object-contain"
+            />
             <p className="text-lg font-semibold">{es.gallery.empty}</p>
             <p className="text-sm text-[var(--muted)] max-w-xs">{es.gallery.emptySub}</p>
             <button onClick={() => setShowAdd(true)} className="btn btn-primary">

@@ -5,7 +5,7 @@ import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../fe
 import { initDriveStructure, saveTestFile, loadTestFile } from '../features/drive/driveClient'
 import { exportAllToZip } from '../lib/export/zipExport'
 import { useGalleryStore } from '../features/gallery/store'
-import { KuromiSticker, SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
+import { SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
 import { PictureIcon, BinderIcon, ClipboardIcon, PencilIcon, DownloadIcon } from '../components/Icons'
 
 export default function Home() {
@@ -85,8 +85,11 @@ export default function Home() {
     <div className="min-h-full flex flex-col items-center justify-center p-6 gap-7">
       <div className="flex flex-col items-center text-center gap-2 fade-up">
         <div className="relative">
-          <KuromiSticker
-            className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow ${status === 'loading' ? 'hop' : 'sticker-float'}`}
+          <img
+            src="./icon.png"
+            alt=""
+            aria-hidden="true"
+            className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow object-contain ${status === 'loading' ? 'hop' : 'sticker-float'}`}
           />
           <SparkleSticker className="absolute -top-2 -right-7 w-7 twinkle" />
           <HeartSticker className="absolute -bottom-2 -left-6 w-6 sticker-float-slow" />
