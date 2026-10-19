@@ -1,13 +1,21 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { useGalleryStore } from '../features/gallery/store'
 import { Link } from 'react-router-dom'
 import { uploadDrawings } from '../features/gallery/upload'
 import { ensureLoaded, trashObra } from '../features/gallery/persistence'
+import {
+  filterObras,
+  collectFacets,
+  emptyFilters,
+  hasActiveFilters,
+  type ObrasFilters,
+} from '../features/gallery/filters'
 import { getToken } from '../features/auth/googleAuth'
 import { es } from '../i18n/es'
 
 export default function Gallery() {
   const obras = useGalleryStore((s) => s.obras)
+  const colecciones = useGalleryStore((s) => s.colecciones)
   const removeObraSoft = useGalleryStore((s) => s.removeObraSoft)
   const clearTrashUndo = useGalleryStore((s) => s.clearTrashUndo)
   const trashedById = useGalleryStore((s) => s.trashedById)
@@ -15,7 +23,16 @@ export default function Gallery() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [undoId, setUndoId] = useState<string | null>(null)
+  const [filters, setFilters] = useState<ObrasFilters>(emptyFilters)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const facets = useMemo(() => collectFacets(obras), [obras])
+  const visibles = useMemo(() => filterObras(obras, filters), [obras, filters])
+  const filtering = hasActiveFilters(filters)
+
+  function patchFilters(patch: Partial<ObrasFilters>) {
+    setFilters((prev) => ({ ...prev, ...patch }))
+  }
 
   useEffect(() => {
     const token = getToken()
@@ -116,11 +133,84 @@ export default function Gallery() {
         </div>
       )}
 
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 flex flex-col gap-3">
+        <input
+          type="search"
+          value={filters.query}
+          onChange={(e) => patchFilters({ query: e.target.value })}
+          aria-label={es.gallery.search}
+          placeholder={es.gallery.search}
+          className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)] outline-none focus:border-[var(--primary)]"
+        />
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={filters.estado}
+            onChange={(e) => patchFilters({ estado: e.target.value })}
+            aria-label={es.gallery.filterEstado}
+            className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          >
+            <option value="">{es.gallery.anyEstado}</option>
+            <option value="boceto">{es.obra.estadoOptions.boceto}</option>
+            <option value="en_proceso">{es.obra.estadoOptions.en_proceso}</option>
+            <option value="terminada">{es.obra.estadoOptions.terminada}</option>
+          </select>
+          <select
+            value={filters.coleccionId}
+            onChange={(e) => patchFilters({ coleccionId: e.target.value })}
+            aria-label={es.gallery.filterColeccion}
+            className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          >
+            <option value="">{es.gallery.allColecciones}</option>
+            {colecciones.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.tecnica}
+            onChange={(e) => patchFilters({ tecnica: e.target.value })}
+            aria-label={es.gallery.filterTecnica}
+            className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          >
+            <option value="">{es.gallery.anyTecnica}</option>
+            {facets.tecnicas.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.etiqueta}
+            onChange={(e) => patchFilters({ etiqueta: e.target.value })}
+            aria-label={es.gallery.filterEtiqueta}
+            className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          >
+            <option value="">{es.gallery.anyEtiqueta}</option>
+            {facets.etiquetas.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {filtering && (
+            <button
+              onClick={() => setFilters(emptyFilters)}
+              className="min-h-[44px] px-4 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+            >
+              {es.gallery.clearFilters}
+            </button>
+          )}
+        </div>
+      </div>
+
       <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {obras.length === 0 ? (
           <p className="col-span-full text-center text-[var(--muted)] py-12">{es.gallery.empty}</p>
+        ) : visibles.length === 0 ? (
+          <p className="col-span-full text-center text-[var(--muted)] py-12">{es.gallery.noResults}</p>
         ) : (
-          obras.map((obra) => (
+          visibles.map((obra) => (
             <Link
               key={obra.id}
               to={`/obra/${obra.id}`}

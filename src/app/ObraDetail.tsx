@@ -5,7 +5,9 @@ import ZoomableImage from '../features/gallery/ZoomableImage'
 import VideoPlayer from '../features/gallery/VideoPlayer'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
 import { saveObra } from '../features/gallery/persistence'
+import { parseList } from '../features/gallery/filters'
 import { getToken } from '../features/auth/googleAuth'
+import type { Obra } from '../features/gallery/store'
 import { es } from '../i18n/es'
 
 export default function ObraDetail() {
@@ -16,6 +18,9 @@ export default function ObraDetail() {
   const removeObraSoft = useGalleryStore((s) => s.removeObraSoft)
   const [titleDraft, setTitleDraft] = useState(obra?.titulo ?? '')
   const [notesDraft, setNotesDraft] = useState(obra?.notas ?? '')
+  const [tecnicasDraft, setTecnicasDraft] = useState(obra?.tecnicas.join(', ') ?? '')
+  const [tagsDraft, setTagsDraft] = useState(obra?.tags.join(', ') ?? '')
+  const [lastObraId, setLastObraId] = useState<string | undefined>(obra?.id)
   const [mediaState, setMediaState] = useState<{ id: string | null; url: string | null }>({ id: null, url: null })
   const archivoFirst = obra?.archivos[0]
   const isVideo = archivoFirst?.tipo === 'video'
@@ -42,11 +47,12 @@ export default function ObraDetail() {
     }
   }, [mediaId])
 
-  if (titleDraft !== (obra?.titulo ?? '') || notesDraft !== (obra?.notas ?? '')) {
-    const synced = obra?.titulo ?? ''
-    const syncedNotes = obra?.notas ?? ''
-    if (titleDraft !== synced) setTitleDraft(synced)
-    if (notesDraft !== syncedNotes) setNotesDraft(syncedNotes)
+  if ((obra?.id ?? undefined) !== lastObraId) {
+    setLastObraId(obra?.id ?? undefined)
+    setTitleDraft(obra?.titulo ?? '')
+    setNotesDraft(obra?.notas ?? '')
+    setTecnicasDraft(obra?.tecnicas.join(', ') ?? '')
+    setTagsDraft(obra?.tags.join(', ') ?? '')
   }
 
   if (!obra) {
@@ -80,6 +86,24 @@ export default function ObraDetail() {
     }
   }
 
+  function saveList(kind: 'tecnicas' | 'tags') {
+    if (!id || !obra) return
+    const value = parseList(kind === 'tecnicas' ? tecnicasDraft : tagsDraft)
+    const current = kind === 'tecnicas' ? obra.tecnicas : obra.tags
+    if (value.length === current.length && value.every((v, i) => v === current[i])) return
+    const patch: Partial<Obra> = kind === 'tecnicas' ? { tecnicas: value } : { tags: value }
+    updateObra(id, patch)
+    const token = getToken()
+    if (token) saveObra(token, { ...obra, ...patch, updatedAt: new Date().toISOString() }).catch(() => undefined)
+  }
+
+  function saveEstado(estado: Obra['estado']) {
+    if (!id || !obra || estado === obra.estado) return
+    updateObra(id, { estado })
+    const token = getToken()
+    if (token) saveObra(token, { ...obra, estado, updatedAt: new Date().toISOString() }).catch(() => undefined)
+  }
+
   function handleTrash() {
     if (!id) return
     if (window.confirm(es.obra.deleteConfirm)) {
@@ -104,7 +128,7 @@ export default function ObraDetail() {
             className="w-full mt-1 text-2xl font-bold bg-transparent border border-transparent rounded px-2 py-1 focus:border-[var(--border)] focus:bg-[var(--surface)] outline-none"
           />
           <p className="text-sm text-[var(--muted)] px-2">
-            {obra.fecha} · {obra.estado}
+            {obra.fecha} · {es.obra.estadoOptions[obra.estado]}
           </p>
         </div>
         <button
@@ -144,9 +168,48 @@ export default function ObraDetail() {
             className="w-full bg-[var(--bg)] border border-[var(--border)] rounded p-2 text-sm outline-none focus:border-[var(--primary)]"
           />
         </div>
-        <div className="bg-[var(--surface)] rounded-lg p-4 border border-[var(--border)]">
-          <h2 className="text-sm font-medium mb-2">{es.obra.techniques}</h2>
-          <p className="text-sm text-[var(--muted)]">{obra.tecnicas.length ? obra.tecnicas.join(', ') : '-'}</p>
+        <div className="bg-[var(--surface)] rounded-lg p-4 border border-[var(--border)] flex flex-col gap-4">
+          <div>
+            <label htmlFor="estado" className="text-sm font-medium block mb-2">
+              {es.obra.estado}
+            </label>
+            <select
+              id="estado"
+              value={obra.estado}
+              onChange={(e) => saveEstado(e.target.value as Obra['estado'])}
+              className="w-full min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+            >
+              <option value="boceto">{es.obra.estadoOptions.boceto}</option>
+              <option value="en_proceso">{es.obra.estadoOptions.en_proceso}</option>
+              <option value="terminada">{es.obra.estadoOptions.terminada}</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="tecnicas" className="text-sm font-medium block mb-2">
+              {es.obra.techniques}
+            </label>
+            <input
+              id="tecnicas"
+              value={tecnicasDraft}
+              onChange={(e) => setTecnicasDraft(e.target.value)}
+              onBlur={() => saveList('tecnicas')}
+              placeholder={es.obra.techniquesPlaceholder}
+              className="w-full min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)] outline-none focus:border-[var(--primary)]"
+            />
+          </div>
+          <div>
+            <label htmlFor="etiquetas" className="text-sm font-medium block mb-2">
+              {es.obra.tags}
+            </label>
+            <input
+              id="etiquetas"
+              value={tagsDraft}
+              onChange={(e) => setTagsDraft(e.target.value)}
+              onBlur={() => saveList('tags')}
+              placeholder={es.obra.tagsPlaceholder}
+              className="w-full min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)] outline-none focus:border-[var(--primary)]"
+            />
+          </div>
         </div>
       </section>
     </div>

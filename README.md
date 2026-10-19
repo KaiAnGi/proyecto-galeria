@@ -18,9 +18,14 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Borrado suave con "Deshacer"; al expirar, los archivos se mueven a la papelera de Drive.
 - Imagen de galería ≤2400 px, miniatura y corrección de EXIF/HEIC.
 
-### Fase 2 — Organización (hecha)
+### Fase 2 — Organización (hecha, menos los pares y las versiones)
 - Colecciones y cuadernos, con vista de detalle y orden de páginas.
 - Persistencia de colecciones en Drive (`_datos/colecciones/coleccion-<id>.json`).
+- Búsqueda por título y notas (ignora mayúsculas y acentos).
+- Filtros por estado, colección, técnica y etiqueta; los desplegables se rellenan
+  con lo que hay en la galería y hay botón "Quitar filtros".
+- Edición en la ficha de la obra: estado, técnicas y etiquetas (se guardan en Drive).
+- Pendiente de esta fase: pares tradicional→digital y versiones con deslizador.
 
 ### Fase 3 — Animación y clase (hecha)
 - Pencil test: subida de fotogramas en orden, reproducción de 6 a 24 fps con bucle,
@@ -39,12 +44,13 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Altura dinámica (`100dvh`) y área segura (`env(safe-area-inset-*)`) para iPad.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (26 pruebas: lógica de datos/Drive, media).
+- Unitarias con Vitest: `npm run test` (34 pruebas: lógica de datos/Drive, media y filtros).
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos:
   `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con
-  user agent de Ecosia). Cubren OAuth simulado, subida real de GIF/vídeo con un Drive
-  en memoria, entregas con recarga, controles táctiles ≥44 px, área segura/dvh y
-  soporte de MP4 H.264.
+  user agent de Ecosia). 46 pruebas (6 saltadas según el motor): OAuth simulado,
+  subida real de GIF/vídeo con un Drive en memoria, entregas con recarga,
+  búsqueda/filtros y edición de la ficha, controles táctiles ≥44 px,
+  área segura/dvh y soporte de MP4 H.264.
 
 ## Pendiente
 - Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`).
