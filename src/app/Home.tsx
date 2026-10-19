@@ -60,7 +60,12 @@ export default function Home() {
     setExporting(true)
     try {
       const s = useGalleryStore.getState()
-      const blob = await exportAllToZip({ obras: s.obras, colecciones: s.colecciones, secuencias: s.secuencias })
+      const blob = await exportAllToZip({
+        obras: s.obras,
+        colecciones: s.colecciones,
+        secuencias: s.secuencias,
+        entregas: s.entregas,
+      })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -109,6 +114,9 @@ export default function Home() {
             </Link>
             <Link to="/pencil-test" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
               {es.app.goPencilTest}
+            </Link>
+            <Link to="/entregas" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
+              {es.app.goEntregas}
             </Link>
             <button
               onClick={handleExport}

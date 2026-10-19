@@ -50,10 +50,24 @@ export interface Coleccion {
   orden: number
 }
 
+export interface Entrega {
+  schema: 1
+  id: string
+  rev: number
+  updatedAt: string
+  titulo: string
+  asignatura?: string
+  fechaLimite?: string
+  estado: 'pendiente' | 'en_curso' | 'entregada'
+  notas?: string
+  obraIds: string[]
+}
+
 interface GalleryState {
   obras: Obra[]
   colecciones: Coleccion[]
   secuencias: Secuencia[]
+  entregas: Entrega[]
   addObra: (obra: Obra) => void
   updateObra: (id: string, patch: Partial<Obra>) => void
   removeObraSoft: (id: string) => void
@@ -67,6 +81,9 @@ interface GalleryState {
   addSecuencia: (s: Secuencia) => void
   updateSecuencia: (id: string, patch: Partial<Secuencia>) => void
   removeSecuencia: (id: string) => void
+  addEntrega: (e: Entrega) => void
+  updateEntrega: (id: string, patch: Partial<Entrega>) => void
+  removeEntrega: (id: string) => void
   hydrate: (state: Partial<GalleryState>) => void
 }
 
@@ -74,6 +91,7 @@ export const useGalleryStore = create<GalleryState>((set) => ({
   obras: [],
   colecciones: [],
   secuencias: [],
+  entregas: [],
   addObra: (obra) => set((state) => ({ obras: [obra, ...state.obras] })),
   updateObra: (id, patch) =>
     set((state) => ({
@@ -130,5 +148,11 @@ export const useGalleryStore = create<GalleryState>((set) => ({
       secuencias: state.secuencias.map((s) => (s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s)),
     })),
   removeSecuencia: (id) => set((state) => ({ secuencias: state.secuencias.filter((s) => s.id !== id) })),
+  addEntrega: (e) => set((state) => ({ entregas: [e, ...state.entregas] })),
+  updateEntrega: (id, patch) =>
+    set((state) => ({
+      entregas: state.entregas.map((e) => (e.id === id ? { ...e, ...patch, updatedAt: new Date().toISOString() } : e)),
+    })),
+  removeEntrega: (id) => set((state) => ({ entregas: state.entregas.filter((e) => e.id !== id) })),
   hydrate: (state) => set((prev) => ({ ...prev, ...state })),
 }))

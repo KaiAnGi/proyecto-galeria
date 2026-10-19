@@ -103,7 +103,7 @@ export default function Gallery() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}

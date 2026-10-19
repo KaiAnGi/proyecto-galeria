@@ -1,6 +1,6 @@
 import { getFolderIds } from './upload'
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
-import type { Obra, Coleccion } from './store'
+import type { Obra, Coleccion, Entrega } from './store'
 import type { Secuencia } from './secuencias'
 import { useGalleryStore } from './store'
 
@@ -22,6 +22,14 @@ export async function saveSecuencia(token: string, secuencia: Secuencia): Promis
   await upsertJson(token, secuencia, `secuencia-${secuencia.id}.json`, [folders.secuenciasId], {
     kind: 'secuencia',
     id: secuencia.id,
+  })
+}
+
+export async function saveEntrega(token: string, entrega: Entrega): Promise<void> {
+  const folders = await getFolderIds(token)
+  await upsertJson(token, entrega, `entrega-${entrega.id}.json`, [folders.entregasId], {
+    kind: 'entrega',
+    id: entrega.id,
   })
 }
 
@@ -49,25 +57,33 @@ export async function trashSecuencia(token: string, secuencia: Secuencia): Promi
   await trashJsonByName(token, folders.secuenciasId, `secuencia-${secuencia.id}.json`)
 }
 
+export async function trashEntrega(token: string, entrega: Entrega): Promise<void> {
+  const folders = await getFolderIds(token)
+  await trashJsonByName(token, folders.entregasId, `entrega-${entrega.id}.json`)
+}
+
 export interface LoadedData {
   obras: Obra[]
   colecciones: Coleccion[]
   secuencias: Secuencia[]
+  entregas: Entrega[]
 }
 
 export async function loadAllData(token: string): Promise<LoadedData> {
   const folders = await getFolderIds(token)
-  const [obraFiles, coleccionFiles, secuenciaFiles] = await Promise.all([
+  const [obraFiles, coleccionFiles, secuenciaFiles, entregaFiles] = await Promise.all([
     listJsonFiles(token, folders.obrasId),
     listJsonFiles(token, folders.coleccionesId),
     listJsonFiles(token, folders.secuenciasId),
+    listJsonFiles(token, folders.entregasId),
   ])
-  const [obras, colecciones, secuencias] = await Promise.all([
+  const [obras, colecciones, secuencias, entregas] = await Promise.all([
     Promise.all(obraFiles.map((f) => downloadJson<Obra>(token, f.id))),
     Promise.all(coleccionFiles.map((f) => downloadJson<Coleccion>(token, f.id))),
     Promise.all(secuenciaFiles.map((f) => downloadJson<Secuencia>(token, f.id))),
+    Promise.all(entregaFiles.map((f) => downloadJson<Entrega>(token, f.id))),
   ])
-  return { obras, colecciones, secuencias }
+  return { obras, colecciones, secuencias, entregas }
 }
 
 let loadedOnce = false

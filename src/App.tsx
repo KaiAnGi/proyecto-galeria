@@ -5,6 +5,7 @@ import ObraDetail from './app/ObraDetail'
 import Colecciones from './app/Colecciones'
 import ColeccionDetail from './app/ColeccionDetail'
 import PencilTest from './app/PencilTest'
+import Entregas from './app/Entregas'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/colecciones" element={<Colecciones />} />
         <Route path="/coleccion/:id" element={<ColeccionDetail />} />
         <Route path="/pencil-test" element={<PencilTest />} />
+        <Route path="/entregas" element={<Entregas />} />
       </Routes>
     </HashRouter>
   )

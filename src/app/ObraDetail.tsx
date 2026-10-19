@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import ZoomableImage from '../features/gallery/ZoomableImage'
+import VideoPlayer from '../features/gallery/VideoPlayer'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
 import { saveObra } from '../features/gallery/persistence'
 import { getToken } from '../features/auth/googleAuth'
@@ -15,20 +16,22 @@ export default function ObraDetail() {
   const removeObraSoft = useGalleryStore((s) => s.removeObraSoft)
   const [titleDraft, setTitleDraft] = useState(obra?.titulo ?? '')
   const [notesDraft, setNotesDraft] = useState(obra?.notas ?? '')
-  const [galleryState, setGalleryState] = useState<{ id: string | null; url: string | null }>({ id: null, url: null })
-  const galeriaId = obra?.archivos[0]?.drive.galeriaId
-  const galleryUrl = galleryState.id === galeriaId ? galleryState.url : null
+  const [mediaState, setMediaState] = useState<{ id: string | null; url: string | null }>({ id: null, url: null })
+  const archivoFirst = obra?.archivos[0]
+  const isVideo = archivoFirst?.tipo === 'video'
+  const mediaId = isVideo ? archivoFirst?.drive.originalId : archivoFirst?.drive.galeriaId
+  const mediaUrl = mediaState.id === mediaId ? mediaState.url : null
 
   useEffect(() => {
     let cancelled = false
     let objUrl: string | null = null
     const token = getToken()
-    if (!galeriaId || !token) return
-    downloadFileAsBlob(token, galeriaId)
+    if (!mediaId || !token) return
+    downloadFileAsBlob(token, mediaId)
       .then((blob: Blob) => {
         if (cancelled) return
         objUrl = URL.createObjectURL(blob)
-        setGalleryState({ id: galeriaId, url: objUrl })
+        setMediaState({ id: mediaId, url: objUrl })
       })
       .catch(() => {
         // fallback a miniatura
@@ -37,7 +40,7 @@ export default function ObraDetail() {
       cancelled = true
       if (objUrl) URL.revokeObjectURL(objUrl)
     }
-  }, [galeriaId])
+  }, [mediaId])
 
   if (titleDraft !== (obra?.titulo ?? '') || notesDraft !== (obra?.notas ?? '')) {
     const synced = obra?.titulo ?? ''
@@ -56,8 +59,6 @@ export default function ObraDetail() {
       </div>
     )
   }
-
-  const archivo = obra.archivos[0]
 
   function saveTitle() {
     if (!id || !obra) return
@@ -115,8 +116,14 @@ export default function ObraDetail() {
       </header>
 
       <section className="flex items-center justify-center">
-        {archivo ? (
-          <ZoomableImage src={galleryUrl ?? obra.miniatura} alt={obra.titulo} />
+        {isVideo ? (
+          mediaUrl ? (
+            <VideoPlayer src={mediaUrl} />
+          ) : (
+            <div className="py-16 text-[var(--muted)]">{es.app.loading}</div>
+          )
+        ) : archivoFirst ? (
+          <ZoomableImage src={mediaUrl ?? obra.miniatura} alt={obra.titulo} />
         ) : (
           <div className="py-16 text-[var(--muted)]">{es.gallery.noImage}</div>
         )}

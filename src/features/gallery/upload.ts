@@ -1,5 +1,6 @@
 import { ulid } from 'ulidx'
 import { fileToBitmap, resizeToMaxDimensions, createMiniDataUrl, determineMime } from '../../lib/image/imageProcessor'
+import { classifyFile, getVideoThumbnail } from '../../lib/media/mediaProcessor'
 import { uploadBlob, uploadJson } from '../drive/driveImageClient'
 import type { Obra, Archivo } from './store'
 import { useGalleryStore } from './store'
@@ -29,6 +30,7 @@ export interface FolderIds {
   obrasId: string
   coleccionesId: string
   secuenciasId: string
+  entregasId: string
 }
 
 export async function getFolderIds(token: string): Promise<FolderIds> {
@@ -67,6 +69,7 @@ export async function getFolderIds(token: string): Promise<FolderIds> {
   const obrasId = await ensureFolder(token, datosId, 'obras', 'obras')
   const coleccionesId = await ensureFolder(token, datosId, 'colecciones', 'colecciones')
   const secuenciasId = await ensureFolder(token, datosId, 'secuencias', 'secuencias')
+  const entregasId = await ensureFolder(token, datosId, 'entregas', 'entregas')
 
   return {
     rootId: root.id,
@@ -78,6 +81,7 @@ export async function getFolderIds(token: string): Promise<FolderIds> {
     obrasId,
     coleccionesId,
     secuenciasId,
+    entregasId,
   }
 }
 
@@ -90,38 +94,87 @@ export async function uploadDrawings(files: File[]): Promise<Obra[]> {
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
-    const bmp = await fileToBitmap(file)
     const now = new Date()
     const isoDate = now.toISOString()
     const id = ulid()
+    const kind = classifyFile(file)
 
-    const originalBlob = file
-    const galeriaBlob = await resizeToMaxDimensions(bmp, 2400, 'image/webp', 0.85)
-    const galeriaMime = determineMime(galeriaBlob.type)
-    const galeriaBlobFinal = galeriaMime === 'image/webp' ? galeriaBlob : await resizeToMaxDimensions(bmp, 2400, 'image/jpeg', 0.85)
+    let archivo: Archivo
+    let miniatura = ''
 
-    const miniDataUrl = await createMiniDataUrl(bmp, 480, 0.8)
-    const miniBlob = await (await fetch(miniDataUrl)).blob()
-    await uploadBlob(token, miniBlob, `${id}-mini.webp`, [folders.miniaturasId], { kind: 'miniatura', obraId: id })
+    if (kind === 'video') {
+      const upOrig = await uploadBlob(token, file, `${id}-original`, [folders.originalesId], {
+        kind: 'original',
+        obraId: id,
+      })
+      miniatura = await getVideoThumbnail(file).catch(() => '')
+      if (miniatura) {
+        const miniBlob = await (await fetch(miniatura)).blob()
+        await uploadBlob(token, miniBlob, `${id}-mini.jpg`, [folders.miniaturasId], { kind: 'miniatura', obraId: id })
+      }
+      archivo = {
+        id: ulid(),
+        tipo: 'video',
+        rol: 'proceso',
+        orden: 0,
+        mime: file.type || 'video/mp4',
+        bytes: file.size,
+        tomadaEn: isoDate,
+        drive: { originalId: upOrig.id },
+      }
+    } else if (kind === 'gif') {
+      const upOrig = await uploadBlob(token, file, `${id}-original`, [folders.originalesId], {
+        kind: 'original',
+        obraId: id,
+      })
+      const bmp = await fileToBitmap(file)
+      miniatura = await createMiniDataUrl(bmp, 480, 0.8)
+      const miniBlob = await (await fetch(miniatura)).blob()
+      await uploadBlob(token, miniBlob, `${id}-mini.webp`, [folders.miniaturasId], { kind: 'miniatura', obraId: id })
+      archivo = {
+        id: ulid(),
+        tipo: 'gif',
+        rol: 'digital',
+        orden: 0,
+        mime: 'image/gif',
+        ancho: bmp.width,
+        alto: bmp.height,
+        bytes: file.size,
+        tomadaEn: isoDate,
+        drive: { originalId: upOrig.id, galeriaId: upOrig.id },
+      }
+    } else {
+      const bmp = await fileToBitmap(file)
+      const galeriaBlob = await resizeToMaxDimensions(bmp, 2400, 'image/webp', 0.85)
+      const galeriaMime = determineMime(galeriaBlob.type)
+      const galeriaBlobFinal =
+        galeriaMime === 'image/webp' ? galeriaBlob : await resizeToMaxDimensions(bmp, 2400, 'image/jpeg', 0.85)
 
+      miniatura = await createMiniDataUrl(bmp, 480, 0.8)
+      const miniBlob = await (await fetch(miniatura)).blob()
+      await uploadBlob(token, miniBlob, `${id}-mini.webp`, [folders.miniaturasId], { kind: 'miniatura', obraId: id })
 
-    const originalName = `${id}-original`
-    const galeriaNameFinal = galeriaBlobFinal.type.includes('jpeg') || galeriaBlobFinal.type.includes('jpg') ? `${id}.jpg` : `${id}.webp`
-    const upOrig = await uploadBlob(token, originalBlob, originalName, [folders.originalesId], { kind: 'original', obraId: id })
-    const upGal = await uploadBlob(token, galeriaBlobFinal, galeriaNameFinal, [folders.galeriaId], { kind: 'galeria', obraId: id })
-    const archivo: Archivo = {
-      id: ulid(),
-      tipo: 'imagen',
-      rol: 'tradicional',
-      orden: 0,
-      mime: galeriaBlobFinal.type || 'image/webp',
-      ancho: bmp.width,
-      alto: bmp.height,
-      tomadaEn: isoDate,
-      drive: {
-        originalId: upOrig.id,
-        galeriaId: upGal.id,
-      },
+      const galeriaNameFinal =
+        galeriaBlobFinal.type.includes('jpeg') || galeriaBlobFinal.type.includes('jpg') ? `${id}.jpg` : `${id}.webp`
+      const upOrig = await uploadBlob(token, file, `${id}-original`, [folders.originalesId], {
+        kind: 'original',
+        obraId: id,
+      })
+      const upGal = await uploadBlob(token, galeriaBlobFinal, galeriaNameFinal, [folders.galeriaId], {
+        kind: 'galeria',
+        obraId: id,
+      })
+      archivo = {
+        id: ulid(),
+        tipo: 'imagen',
+        rol: 'tradicional',
+        orden: 0,
+        mime: galeriaBlobFinal.type || 'image/webp',
+        ancho: bmp.width,
+        alto: bmp.height,
+        tomadaEn: isoDate,
+        drive: { originalId: upOrig.id, galeriaId: upGal.id },
+      }
     }
 
     const obra: Obra = {
@@ -133,11 +186,11 @@ export async function uploadDrawings(files: File[]): Promise<Obra[]> {
       titulo: 'Sin título',
       fecha: now.toISOString().slice(0, 10),
       estado: 'terminada',
-      origen: 'tradicional',
+      origen: kind === 'video' ? 'digital' : 'tradicional',
       tecnicas: [],
       tags: [],
       coleccionIds: [],
-      miniatura: miniDataUrl,
+      miniatura,
       archivos: [archivo],
     }
 

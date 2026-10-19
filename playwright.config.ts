@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { ECOSIA_USER_AGENT } from './e2e/helpers'
 
 export default defineConfig({
   testDir: './e2e',
@@ -19,5 +20,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'ipad', use: { ...devices['iPad (gen 7)'] } },
+    { name: 'ecosia', use: { ...devices['Desktop Chrome'], userAgent: ECOSIA_USER_AGENT } },
   ],
 })

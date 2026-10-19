@@ -113,7 +113,22 @@ export async function resizeToMaxDimensions(
   if (!ctx) throw new Error('Canvas context unavailable')
   ctx.drawImage(image, 0, 0, targetW, targetH)
   return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), mimeType, quality)
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob)
+          return
+        }
+        // Some engines (older Safari/WebKit) cannot encode webp
+        if (mimeType === 'image/jpeg') {
+          reject(new Error('toBlob failed'))
+          return
+        }
+        canvas.toBlob((jpeg) => (jpeg ? resolve(jpeg) : reject(new Error('toBlob failed'))), 'image/jpeg', quality)
+      },
+      mimeType,
+      quality,
+    )
   })
 }
 
