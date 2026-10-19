@@ -11,6 +11,7 @@ import {
   type ObrasFilters,
 } from '../features/gallery/filters'
 import { getToken } from '../features/auth/googleAuth'
+import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { SkullBowSticker } from '../components/Stickers'
 import { PlusIcon, CameraIcon, ImagesIcon, SearchIcon } from '../components/Icons'
@@ -66,7 +67,8 @@ export default function Gallery() {
       setShowAdd(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (e) {
-      setError(e instanceof Error ? e.message : es.gallery.uploadError)
+      console.error('Upload failed', e)
+      setError(friendlyError(e, es.gallery.uploadError))
     } finally {
       setUploading(false)
     }

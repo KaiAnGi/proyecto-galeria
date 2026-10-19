@@ -4,6 +4,7 @@ import { es } from '../i18n/es'
 import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../features/auth/googleAuth'
 import { initDriveStructure, saveTestFile, loadTestFile } from '../features/drive/driveClient'
 import { exportAllToZip } from '../lib/export/zipExport'
+import { friendlyError } from '../lib/errors/friendlyError'
 import { useGalleryStore } from '../features/gallery/store'
 import { SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
 import { PictureIcon, BinderIcon, ClipboardIcon, PencilIcon, DownloadIcon } from '../components/Icons'
@@ -29,7 +30,8 @@ export default function Home() {
       setRootId(root)
       setStatus('connected')
     } catch (e: any) {
-      setError(e?.message || 'Error al conectar')
+      console.error('Connect failed', e)
+      setError(friendlyError(e, es.app.connectError))
       setStatus('error')
     }
   }
@@ -42,7 +44,8 @@ export default function Home() {
       setTestData(saved)
       alert(es.app.testSaved)
     } catch (e: any) {
-      alert('Error: ' + (e?.message || ''))
+      console.error('Test write failed', e)
+      alert(friendlyError(e, es.errors.unexpected))
     }
   }
 
@@ -54,7 +57,8 @@ export default function Home() {
       setTestData(loaded)
       alert(es.app.testLoaded)
     } catch (e: any) {
-      alert('Error: ' + (e?.message || ''))
+      console.error('Test read failed', e)
+      alert(friendlyError(e, es.errors.unexpected))
     }
   }
 

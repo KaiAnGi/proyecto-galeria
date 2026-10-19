@@ -10,6 +10,7 @@
     createRoot: 'Crear estructura en Drive',
     loading: 'Cargando...',
     error: 'Error',
+    connectError: 'Error al conectar',
     adblockHelp: 'Tu navegador está bloqueando la conexión con Google. Desactiva el bloqueador solo para esta página y pulsa Reintentar.',
     testWrite: 'Guardar prueba',
     testRead: 'Leer prueba',
@@ -131,6 +132,12 @@
       cuaderno: 'Cuaderno',
       clase: 'Clase',
     },
+  },
+  errors: {
+    network: 'No se ha podido conectar con Google. Comprueba tu conexión o desactiva el bloqueador solo para esta página y vuelve a intentarlo.',
+    session: 'Tu sesión con Google ha caducado. Conéctate otra vez para continuar.',
+    notFound: 'No se encuentra la estructura en Drive. Conéctate otra vez para volver a crearla.',
+    unexpected: 'Algo ha salido mal. Vuelve a intentarlo en unos minutos.',
   },
   pencil: {
     title: 'Pencil Test',
