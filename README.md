@@ -42,6 +42,14 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Carga de obras/colecciones/secuencias/entregas desde Drive al iniciar sesión.
 - Exportación a ZIP de los datos (obras, colecciones, secuencias y entregas).
 - Altura dinámica (`100dvh`) y área segura (`env(safe-area-inset-*)`) para iPad.
+- Rediseño visual completo (SPEC §10): tipografías autoalojadas DynaPuff (títulos)
+  y Fredoka (texto) bajo licencia SIL OFL, fondo con degradados y damero suave,
+  botones con efecto 3D al pulsar, tarjetas y fichas tipo pegatina, stickers SVG
+  100 % originales (mascota de bufón, calavera con lazo, estrellas, corazones,
+  murciélago, luna), iconos propios, cursor de corazón en escritorio y animaciones
+  cortas que respetan `prefers-reduced-motion`. Favicon propio (calavera con lazo).
+- Toda la tipografía de interfaz vive en `src/i18n/es.ts`; se extrajeron los textos
+  que estaban sueltos en Colecciones, ColeccionDetail y Pencil test.
 
 ## Pruebas
 - Unitarias con Vitest: `npm run test` (34 pruebas: lógica de datos/Drive, media y filtros).

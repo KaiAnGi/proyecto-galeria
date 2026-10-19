@@ -6,6 +6,8 @@ import type { Entrega } from '../features/gallery/store'
 import { saveEntrega, trashEntrega, ensureLoaded } from '../features/gallery/persistence'
 import { getToken } from '../features/auth/googleAuth'
 import { es } from '../i18n/es'
+import { MoonSticker } from '../components/Stickers'
+import { PlusIcon } from '../components/Icons'
 
 type Estado = Entrega['estado']
 
@@ -94,50 +96,62 @@ export default function Entregas() {
 
   return (
     <div className="min-h-full p-4 sm:p-6 flex flex-col gap-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{es.entregas.title}</h1>
-        <Link to="/" className="text-sm text-[var(--muted)] min-h-[44px] flex items-center px-2">
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 fade-up">
+          <MoonSticker className="hidden sm:block w-11 h-11 shrink-0 sticker-float sticker-shadow" />
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text truncate">{es.entregas.title}</h1>
+        </div>
+        <Link to="/" className="btn btn-soft shrink-0">
           {es.obra.back}
         </Link>
       </header>
 
-      <div className="bg-[var(--surface)] p-4 rounded-lg border border-[var(--border)] flex flex-wrap items-center gap-3">
+      <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>
         <input
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
           placeholder={es.entregas.titlePlaceholder}
-          className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)] grow"
+          className="field grow min-w-[12rem]"
         />
         <input
           value={asignatura}
           onChange={(e) => setAsignatura(e.target.value)}
           placeholder={es.entregas.subject}
-          className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          className="field grow min-w-[9rem]"
         />
         <input
           type="date"
           value={fechaLimite}
           onChange={(e) => setFechaLimite(e.target.value)}
           aria-label={es.entregas.due}
-          className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          className="field"
         />
-        <button onClick={crear} className="min-h-[44px] px-4 rounded-lg bg-[var(--primary)] text-[var(--text)]">
+        <button onClick={crear} className="btn btn-accent">
+          <PlusIcon className="w-5 h-5" />
           {es.entregas.add}
         </button>
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-[var(--muted)]">{es.entregas.noEntregas}</p>
+        <div className="flex flex-col items-center text-center gap-3 py-10">
+          <MoonSticker className="w-16 h-16 sticker-float sticker-shadow pop-in" />
+          <p className="text-lg font-semibold">{es.entregas.noEntregas}</p>
+          <p className="text-sm text-[var(--muted)] max-w-xs">{es.entregas.emptySub}</p>
+        </div>
       ) : (
         <section className="flex flex-col gap-4">
-          {sorted.map((entrega) => {
+          {sorted.map((entrega, i) => {
             const label = dueLabel(entrega.fechaLimite)
             const unlinked = obras.filter((o) => !entrega.obraIds.includes(o.id))
             return (
-              <article key={entrega.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 flex flex-col gap-3">
+              <article
+                key={entrega.id}
+                className="card p-4 flex flex-col gap-3 fade-up"
+                style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="font-medium">{entrega.titulo}</h2>
+                  <div className="min-w-0">
+                    <h2 className="font-display font-semibold">{entrega.titulo}</h2>
                     <p className="text-sm text-[var(--muted)]">
                       {entrega.asignatura ? `${entrega.asignatura} · ` : ''}
                       {entrega.fechaLimite ? `${entrega.fechaLimite}` : ''}
@@ -149,16 +163,13 @@ export default function Entregas() {
                       value={entrega.estado}
                       onChange={(e) => patch(entrega.id, { estado: e.target.value as Estado })}
                       aria-label={es.entregas.statusLabel}
-                      className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+                      className="field"
                     >
                       <option value="pendiente">{es.entregas.estado.pendiente}</option>
                       <option value="en_curso">{es.entregas.estado.en_curso}</option>
                       <option value="entregada">{es.entregas.estado.entregada}</option>
                     </select>
-                    <button
-                      onClick={() => handleTrash(entrega)}
-                      className="min-h-[44px] px-4 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-red-300"
-                    >
+                    <button onClick={() => handleTrash(entrega)} className="btn btn-danger">
                       {es.entregas.trash}
                     </button>
                   </div>
@@ -174,14 +185,14 @@ export default function Entregas() {
                         const obra = obras.find((o) => o.id === obraId)
                         if (!obra) return null
                         return (
-                          <li key={obraId} className="flex items-center gap-2 bg-[var(--bg)] border border-[var(--border)] rounded px-2 py-1">
+                          <li key={obraId} className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-full pl-3 pr-1">
                             <Link to={`/obra/${obra.id}`} className="min-h-[44px] flex items-center">
                               {obra.titulo}
                             </Link>
                             <button
                               onClick={() => unlinkObra(entrega, obraId)}
                               aria-label={es.entregas.unlink}
-                              className="min-h-[44px] px-2 text-[var(--muted)]"
+                              className="btn btn-ghost"
                             >
                               ✕
                             </button>
@@ -195,7 +206,7 @@ export default function Entregas() {
                       value=""
                       onChange={(e) => linkObra(entrega, e.target.value)}
                       aria-label={es.entregas.linkWork}
-                      className="mt-2 min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+                      className="field mt-2"
                     >
                       <option value="">{es.entregas.linkWork}</option>
                       {unlinked.map((o) => (

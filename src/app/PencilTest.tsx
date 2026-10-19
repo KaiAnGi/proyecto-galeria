@@ -7,6 +7,9 @@ import { saveSecuencia, ensureLoaded } from '../features/gallery/persistence'
 import { uploadFrames } from '../features/gallery/pencilUpload'
 import { withUpdatedAt } from '../features/gallery/secuencias'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
+import { es } from '../i18n/es'
+import { BatSticker } from '../components/Stickers'
+import { PlusIcon, PencilIcon } from '../components/Icons'
 
 export default function PencilTest() {
   const secuencias = useGalleryStore((s) => s.secuencias)
@@ -100,26 +103,68 @@ export default function PencilTest() {
 
   return (
     <div className="p-4 sm:p-6 flex flex-col gap-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Pencil Test</h1>
-        <Link to="/galeria">Volver</Link>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 fade-up">
+          <PencilIcon className="hidden sm:block w-7 h-7 shrink-0 text-[var(--accent-soft)]" />
+          <h1 className="text-xl sm:text-2xl font-bold gradient-text truncate">{es.pencil.title}</h1>
+        </div>
+        <Link to="/galeria" className="btn btn-soft shrink-0">
+          {es.pencil.back}
+        </Link>
       </header>
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded p-4 flex flex-wrap gap-3">
-        <input type="file" accept="image/*" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-        <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título" className="min-h-[44px] px-3 bg-[var(--bg)] border border-[var(--border)] rounded" />
-        <input type="number" value={fps} min={6} max={24} onChange={(e) => setFps(Number(e.target.value))} className="min-h-[44px] px-3 w-20 bg-[var(--bg)] border border-[var(--border)] rounded" />
-        <button onClick={createFromFiles} className="min-h-[44px] px-4 bg-[var(--primary)] rounded">Crear</button>
-        <button onClick={() => setPlaying((v) => !v)} className="min-h-[44px] px-4 bg-[var(--bg)] border border-[var(--border)] rounded">{playing ? 'Pausar' : 'Reproducir'}</button>
-        <label className="flex items-center gap-2">
-          <span>Papel cebolla {Math.round(onion * 100)}%</span>
-          <input type="range" min={0} max={0.8} step={0.1} value={onion} onChange={(e) => setOnion(Number(e.target.value))} />
+      <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>
+        <label className="btn btn-soft">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          />
+          <PlusIcon className="w-5 h-5" />
+          {es.pencil.pick}
+        </label>
+        <input
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder={es.pencil.titlePlaceholder}
+          className="field grow min-w-[10rem]"
+        />
+        <input
+          type="number"
+          value={fps}
+          min={6}
+          max={24}
+          onChange={(e) => setFps(Number(e.target.value))}
+          aria-label={es.pencil.fps}
+          className="field w-24"
+        />
+        <button onClick={createFromFiles} className="btn btn-primary">
+          {es.pencil.create}
+        </button>
+        <button onClick={() => setPlaying((v) => !v)} className="btn btn-soft">
+          {playing ? es.pencil.pause : es.pencil.play}
+        </button>
+        <label className="flex items-center gap-2 text-sm">
+          <span className="whitespace-nowrap">
+            {es.pencil.onion} {Math.round(onion * 100)}%
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={0.8}
+            step={0.1}
+            value={onion}
+            onChange={(e) => setOnion(Number(e.target.value))}
+            className="accent-[var(--accent)] min-h-[44px]"
+          />
         </label>
       </div>
 
-      {sec && urls.length > 0 && (
-        <div className="flex flex-col items-center gap-2">
-          <div className="relative w-full max-w-3xl aspect-[4/3] bg-black border border-[var(--border)] rounded overflow-hidden">
+      {sec && urls.length > 0 ? (
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative w-full max-w-3xl aspect-[4/3] bg-black border-2 border-[var(--border)] rounded-2xl overflow-hidden shadow-lg">
             {urls[(index - 1 + urls.length) % urls.length] && onion > 0 && (
               <img
                 src={urls[(index - 1 + urls.length) % urls.length]}
@@ -131,39 +176,37 @@ export default function PencilTest() {
             {urls[index % urls.length] && (
               <img
                 src={urls[index % urls.length]}
-                alt="Fotograma actual"
+                alt={es.pencil.currentFrame}
                 className="absolute inset-0 w-full h-full object-contain"
               />
             )}
           </div>
           <p className="text-sm text-[var(--muted)]">
-            Fotograma {(index % urls.length) + 1} de {urls.length}
+            {es.pencil.frameOf((index % urls.length) + 1, urls.length)}
           </p>
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             {sec.frames
               .slice()
               .sort((a, b) => a.orden - b.orden)
               .map((f, i) => (
                 <div key={f.id} className="flex flex-col items-center gap-1">
-                  <img
-                    src={urls[i]}
-                    alt={`Fotograma ${i + 1}`}
-                    className="w-20 h-16 object-cover bg-black border border-[var(--border)] rounded"
-                  />
+                  <div className="sticker-frame">
+                    <img src={urls[i]} alt={es.pencil.frameAlt(i + 1)} className="w-20 h-16 object-cover" />
+                  </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => moveFrame(i, i - 1)}
                       disabled={i === 0}
-                      aria-label="Mover antes"
-                      className="min-w-[44px] min-h-[44px] rounded bg-[var(--bg)] border border-[var(--border)] disabled:opacity-40"
+                      aria-label={es.pencil.moveBack}
+                      className="btn btn-soft"
                     >
                       ◀
                     </button>
                     <button
                       onClick={() => moveFrame(i, i + 1)}
                       disabled={i === sec.frames.length - 1}
-                      aria-label="Mover después"
-                      className="min-w-[44px] min-h-[44px] rounded bg-[var(--bg)] border border-[var(--border)] disabled:opacity-40"
+                      aria-label={es.pencil.moveForward}
+                      className="btn btn-soft"
                     >
                       ▶
                     </button>
@@ -171,6 +214,11 @@ export default function PencilTest() {
                 </div>
               ))}
           </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center text-center gap-3 py-10">
+          <BatSticker className="w-20 sticker-float sticker-shadow pop-in" />
+          <p className="text-sm text-[var(--muted)] max-w-xs">{es.pencil.empty}</p>
         </div>
       )}
     </div>

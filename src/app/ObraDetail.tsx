@@ -59,7 +59,7 @@ export default function ObraDetail() {
     return (
       <div className="min-h-full p-6 flex flex-col items-center justify-center gap-4">
         <p className="text-[var(--muted)]">{es.obra.notFound}</p>
-        <Link to="/galeria" className="min-h-[44px] px-4 py-2 rounded-lg bg-[var(--surface)]">
+        <Link to="/galeria" className="btn btn-soft">
           {es.obra.back}
         </Link>
       </div>
@@ -116,7 +116,7 @@ export default function ObraDetail() {
     <div className="min-h-full p-4 sm:p-6 flex flex-col gap-6">
       <header className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <Link to="/galeria" className="text-sm text-[var(--muted)]">
+          <Link to="/galeria" className="btn btn-soft">
             {es.obra.back}
           </Link>
           <input
@@ -125,16 +125,16 @@ export default function ObraDetail() {
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={saveTitle}
             placeholder={es.obra.titlePlaceholder}
-            className="w-full mt-1 text-2xl font-bold bg-transparent border border-transparent rounded px-2 py-1 focus:border-[var(--border)] focus:bg-[var(--surface)] outline-none"
+            className="w-full mt-2 text-2xl sm:text-3xl font-display font-bold bg-transparent border-2 border-transparent rounded-2xl px-2 py-1 focus:border-[var(--border)] focus:bg-[var(--surface)] outline-none"
           />
-          <p className="text-sm text-[var(--muted)] px-2">
-            {obra.fecha} · {es.obra.estadoOptions[obra.estado]}
+          <p className="text-sm text-[var(--muted)] px-2 flex flex-wrap items-center gap-2">
+            <span>
+              {obra.fecha} · {es.obra.estadoOptions[obra.estado]}
+            </span>
+            <span className="chip">{es.obra.autoSave}</span>
           </p>
         </div>
-        <button
-          onClick={handleTrash}
-          className="min-h-[44px] px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-red-300 shrink-0"
-        >
+        <button onClick={handleTrash} className="btn btn-danger shrink-0">
           {es.obra.trash}
         </button>
       </header>
@@ -154,7 +154,7 @@ export default function ObraDetail() {
       </section>
 
       <section className="grid sm:grid-cols-2 gap-4">
-        <div className="bg-[var(--surface)] rounded-lg p-4 border border-[var(--border)]">
+        <div className="panel p-4">
           <label htmlFor="notas" className="text-sm font-medium block mb-2">
             {es.obra.notes}
           </label>
@@ -165,10 +165,10 @@ export default function ObraDetail() {
             onBlur={saveNotes}
             placeholder={es.obra.notesPlaceholder}
             rows={6}
-            className="w-full bg-[var(--bg)] border border-[var(--border)] rounded p-2 text-sm outline-none focus:border-[var(--primary)]"
+            className="field w-full resize-y"
           />
         </div>
-        <div className="bg-[var(--surface)] rounded-lg p-4 border border-[var(--border)] flex flex-col gap-4">
+        <div className="panel p-4 flex flex-col gap-4">
           <div>
             <label htmlFor="estado" className="text-sm font-medium block mb-2">
               {es.obra.estado}
@@ -177,7 +177,7 @@ export default function ObraDetail() {
               id="estado"
               value={obra.estado}
               onChange={(e) => saveEstado(e.target.value as Obra['estado'])}
-              className="w-full min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+              className="field w-full"
             >
               <option value="boceto">{es.obra.estadoOptions.boceto}</option>
               <option value="en_proceso">{es.obra.estadoOptions.en_proceso}</option>
@@ -194,7 +194,7 @@ export default function ObraDetail() {
               onChange={(e) => setTecnicasDraft(e.target.value)}
               onBlur={() => saveList('tecnicas')}
               placeholder={es.obra.techniquesPlaceholder}
-              className="w-full min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)] outline-none focus:border-[var(--primary)]"
+              className="field w-full"
             />
           </div>
           <div>
@@ -207,7 +207,7 @@ export default function ObraDetail() {
               onChange={(e) => setTagsDraft(e.target.value)}
               onBlur={() => saveList('tags')}
               placeholder={es.obra.tagsPlaceholder}
-              className="w-full min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)] outline-none focus:border-[var(--primary)]"
+              className="field w-full"
             />
           </div>
         </div>

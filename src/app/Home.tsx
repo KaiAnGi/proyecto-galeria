@@ -5,6 +5,8 @@ import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../fe
 import { initDriveStructure, saveTestFile, loadTestFile } from '../features/drive/driveClient'
 import { exportAllToZip } from '../lib/export/zipExport'
 import { useGalleryStore } from '../features/gallery/store'
+import { KuromiSticker, SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
+import { PictureIcon, BinderIcon, ClipboardIcon, PencilIcon, DownloadIcon } from '../components/Icons'
 
 export default function Home() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'connected' | 'error'>('idle')
@@ -80,63 +82,115 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center p-6 gap-6">
-      <h1 className="text-3xl font-bold">{es.app.title}</h1>
-      <button
-        onClick={handleConnect}
-        disabled={status === 'loading'}
-        className="min-h-[44px] px-6 py-3 rounded-lg bg-[var(--primary)] text-[var(--text)] disabled:opacity-60"
-      >
-        {status === 'loading' ? es.app.connecting : es.app.connectDrive}
-      </button>
+    <div className="min-h-full flex flex-col items-center justify-center p-6 gap-7">
+      <div className="flex flex-col items-center text-center gap-2 fade-up">
+        <div className="relative">
+          <KuromiSticker
+            className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow ${status === 'loading' ? 'hop' : 'sticker-float'}`}
+          />
+          <SparkleSticker className="absolute -top-2 -right-7 w-7 twinkle" />
+          <HeartSticker className="absolute -bottom-2 -left-6 w-6 sticker-float-slow" />
+          <span className="absolute -top-3 -left-8 twinkle" style={{ animationDelay: '1.2s' }}>
+            <StarSticker className="w-5 h-5" />
+          </span>
+        </div>
+        <h1 className="text-4xl sm:text-5xl font-bold gradient-text">{es.app.title}</h1>
+        <p className="text-[var(--muted)] max-w-sm">{es.app.tagline}</p>
+      </div>
 
-      {status === 'error' && error && (
-        <div className="max-w-md text-center text-red-300">
-          <p>{error}</p>
-          <p className="mt-2 text-sm">{es.app.adblockHelp}</p>
-          <button onClick={handleConnect} className="mt-4 min-h-[44px] px-4 py-2 rounded-lg bg-[var(--surface)]">
-            {es.app.retry}
+      {status !== 'connected' && (
+        <div className="flex flex-col items-center gap-4 fade-up" style={{ animationDelay: '0.12s' }}>
+          <button onClick={handleConnect} disabled={status === 'loading'} className="btn btn-primary">
+            {status === 'loading' ? es.app.connecting : es.app.connectDrive}
           </button>
+
+          {status === 'error' && error && (
+            <div className="panel max-w-md p-5 text-center">
+              <p className="font-medium text-[var(--accent-soft)]">{error}</p>
+              <p className="mt-2 text-sm text-[var(--muted)]">{es.app.adblockHelp}</p>
+              <button onClick={handleConnect} className="btn btn-soft mt-4">
+                {es.app.retry}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {status === 'connected' && (
-        <div className="flex flex-col items-center gap-4">
-          <p>
+        <div
+          className="w-full max-w-xl flex flex-col items-center gap-4 fade-up"
+          style={{ animationDelay: '0.12s' }}
+        >
+          <p className="chip">
             {es.app.rootFolderId}: {rootId}
           </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/galeria" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--primary)] text-[var(--text)]">
-              {es.app.goGallery}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            <Link to="/galeria" className="menu-card">
+              <span className="menu-icon">
+                <PictureIcon className="w-6 h-6" />
+              </span>
+              <span className="min-w-0 text-left">
+                <span className="block font-semibold">{es.app.goGallery}</span>
+                <span className="block text-xs text-[var(--muted)]">{es.app.subGallery}</span>
+              </span>
             </Link>
-            <Link to="/colecciones" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
-              {es.app.goCollections}
+            <Link to="/colecciones" className="menu-card">
+              <span className="menu-icon">
+                <BinderIcon className="w-6 h-6" />
+              </span>
+              <span className="min-w-0 text-left">
+                <span className="block font-semibold">{es.app.goCollections}</span>
+                <span className="block text-xs text-[var(--muted)]">{es.app.subCollections}</span>
+              </span>
             </Link>
-            <Link to="/pencil-test" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
-              {es.app.goPencilTest}
+            <Link to="/entregas" className="menu-card">
+              <span className="menu-icon">
+                <ClipboardIcon className="w-6 h-6" />
+              </span>
+              <span className="min-w-0 text-left">
+                <span className="block font-semibold">{es.app.goEntregas}</span>
+                <span className="block text-xs text-[var(--muted)]">{es.app.subEntregas}</span>
+              </span>
             </Link>
-            <Link to="/entregas" className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)]">
-              {es.app.goEntregas}
+            <Link to="/pencil-test" className="menu-card">
+              <span className="menu-icon">
+                <PencilIcon className="w-6 h-6" />
+              </span>
+              <span className="min-w-0 text-left">
+                <span className="block font-semibold">{es.app.goPencilTest}</span>
+                <span className="block text-xs text-[var(--muted)]">{es.app.subPencil}</span>
+              </span>
             </Link>
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="min-h-[44px] px-5 py-3 rounded-lg bg-[var(--surface)] disabled:opacity-60"
-            >
-              {exporting ? es.app.exporting : es.app.exportZip}
+            <button onClick={handleExport} disabled={exporting} className="menu-card sm:col-span-2">
+              <span className="menu-icon">
+                <DownloadIcon className="w-6 h-6" />
+              </span>
+              <span className="min-w-0 text-left">
+                <span className="block font-semibold">
+                  {exporting ? es.app.exporting : es.app.exportZip}
+                </span>
+                <span className="block text-xs text-[var(--muted)]">{es.app.subExport}</span>
+              </span>
             </button>
           </div>
-          <div className="flex gap-4">
-            <button onClick={handleSaveTest} className="min-h-[44px] px-4 py-2 rounded-lg bg-[var(--surface)]">
-              {es.app.testWrite}
-            </button>
-            <button onClick={handleLoadTest} className="min-h-[44px] px-4 py-2 rounded-lg bg-[var(--surface)]">
-              {es.app.testRead}
-            </button>
+
+          <div className="panel w-full p-4 flex flex-col items-center gap-3">
+            <p className="text-sm text-[var(--muted)]">{es.app.devTools}</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button onClick={handleSaveTest} className="btn btn-soft">
+                {es.app.testWrite}
+              </button>
+              <button onClick={handleLoadTest} className="btn btn-soft">
+                {es.app.testRead}
+              </button>
+            </div>
+            {testData && (
+              <pre className="max-w-xl w-full overflow-auto p-3 rounded-2xl bg-black/30 text-sm">
+                {JSON.stringify(testData, null, 2)}
+              </pre>
+            )}
           </div>
-          {testData && (
-            <pre className="max-w-xl overflow-auto bg-[var(--surface)] p-4 rounded text-sm">{JSON.stringify(testData, null, 2)}</pre>
-          )}
         </div>
       )}
     </div>

@@ -45,38 +45,23 @@ export default function VideoPlayer({ src }: Props) {
         src={src}
         playsInline
         controls
-        className="max-h-[60dvh] w-full rounded border border-[var(--border)] bg-black"
+        className="max-h-[60dvh] w-full rounded-2xl border-2 border-[var(--border)] bg-black shadow-lg"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
       />
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          onClick={togglePlay}
-          className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--text)]"
-        >
+        <button onClick={togglePlay} className="btn btn-primary">
           {playing ? es.video.pause : es.video.play}
         </button>
-        <button
-          onClick={() => step(-1)}
-          aria-label={es.video.stepBack}
-          className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)]"
-        >
+        <button onClick={() => step(-1)} aria-label={es.video.stepBack} className="btn btn-soft">
           ⏮
         </button>
-        <button
-          onClick={() => step(1)}
-          aria-label={es.video.stepForward}
-          className="min-h-[44px] min-w-[44px] px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)]"
-        >
+        <button onClick={() => step(1)} aria-label={es.video.stepForward} className="btn btn-soft">
           ⏭
         </button>
         <label className="flex items-center gap-2 text-sm">
           <span>{es.video.speed}</span>
-          <select
-            value={rate}
-            onChange={(e) => changeRate(Number(e.target.value))}
-            className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
-          >
+          <select value={rate} onChange={(e) => changeRate(Number(e.target.value))} className="field">
             {RATES.map((r) => (
               <option key={r} value={r}>
                 {r}x

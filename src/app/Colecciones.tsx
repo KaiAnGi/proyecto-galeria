@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom'
 import { ulid } from 'ulidx'
 import { saveColeccion, ensureLoaded } from '../features/gallery/persistence'
 import { getToken } from '../features/auth/googleAuth'
+import { es } from '../i18n/es'
+import { StarSticker, HeartSticker } from '../components/Stickers'
+import { PlusIcon, BinderIcon } from '../components/Icons'
 
 export default function Colecciones() {
   const colecciones = useGalleryStore((s) => s.colecciones)
@@ -36,38 +39,64 @@ export default function Colecciones() {
 
   return (
     <div className="min-h-full p-4 sm:p-6 flex flex-col gap-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Colecciones</h1>
-        <Link to="/galeria" className="text-sm text-[var(--muted)]">Volver</Link>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 fade-up">
+          <BinderIcon className="hidden sm:block w-8 h-8 shrink-0 text-[var(--accent-soft)]" />
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text truncate">{es.collections.title}</h1>
+        </div>
+        <Link to="/galeria" className="btn btn-soft shrink-0">
+          {es.collections.back}
+        </Link>
       </header>
 
-      <div className="bg-[var(--surface)] p-4 rounded-lg border border-[var(--border)] flex flex-wrap items-center gap-3">
+      <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Nombre"
-          className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          placeholder={es.collections.namePlaceholder}
+          className="field grow min-w-[11rem]"
         />
         <select
           value={tipo}
-          onChange={(e) => setTipo(e.target.value as any)}
-          className="min-h-[44px] px-3 rounded-lg bg-[var(--bg)] border border-[var(--border)]"
+          onChange={(e) => setTipo(e.target.value as 'general' | 'cuaderno' | 'clase')}
+          aria-label={es.collections.tipoLabel}
+          className="field"
         >
-          <option value="general">General</option>
-          <option value="cuaderno">Cuaderno</option>
-          <option value="clase">Clase</option>
+          <option value="general">{es.collections.tipo.general}</option>
+          <option value="cuaderno">{es.collections.tipo.cuaderno}</option>
+          <option value="clase">{es.collections.tipo.clase}</option>
         </select>
-        <button onClick={crear} className="min-h-[44px] px-4 rounded-lg bg-[var(--primary)]">Crear</button>
+        <button onClick={crear} className="btn btn-primary">
+          <PlusIcon className="w-5 h-5" />
+          {es.collections.create}
+        </button>
       </div>
 
-      <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {colecciones.map((c) => (
-          <Link key={c.id} to={`/coleccion/${c.id}`} className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg">
-            <h2 className="font-medium">{c.nombre}</h2>
-            <p className="text-sm text-[var(--muted)] capitalize">{c.tipo}</p>
-          </Link>
-        ))}
-      </section>
+      {colecciones.length === 0 ? (
+        <div className="flex flex-col items-center text-center gap-3 py-10 relative">
+          <span className="relative inline-block">
+            <StarSticker className="w-16 h-16 sticker-float sticker-shadow pop-in" />
+            <HeartSticker className="absolute -bottom-2 -right-4 w-7 sticker-float-slow" />
+          </span>
+          <p className="text-sm text-[var(--muted)] max-w-xs">{es.collections.empty}</p>
+        </div>
+      ) : (
+        <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {colecciones.map((c, i) => (
+            <Link
+              key={c.id}
+              to={`/coleccion/${c.id}`}
+              className="card p-4 fade-up"
+              style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}
+            >
+              <h2 className="font-display font-semibold">{c.nombre}</h2>
+              <p className="text-sm text-[var(--muted)] mt-1">
+                {es.collections.tipo[c.tipo as keyof typeof es.collections.tipo] ?? c.tipo}
+              </p>
+            </Link>
+          ))}
+        </section>
+      )}
     </div>
   )
 }
