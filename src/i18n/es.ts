@@ -24,6 +24,7 @@
     goAnimations: 'Animaciones',
     subAnimations: 'Reproduce tus fotogramas',
     goPencilTest: 'Animaciones',
+    subPencil: 'Reproduce tus fotogramas',
     exportZip: 'Descargar copia (ZIP)',
     subExport: 'Un ZIP con todo, por si acaso',
     exporting: 'Preparando la copia...',
