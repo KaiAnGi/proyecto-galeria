@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { es } from '../i18n/es'
 import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../features/auth/googleAuth'
-import { initDriveStructure, saveTestFile, loadTestFile } from '../features/drive/driveClient'
+import { initDriveStructure } from '../features/drive/driveClient'
 import { exportAllToZip } from '../lib/export/zipExport'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { useGalleryStore } from '../features/gallery/store'
 import { SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
-import { PictureIcon, BinderIcon, ClipboardIcon, PencilIcon, DownloadIcon } from '../components/Icons'
 
 export default function Home() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'connected' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [rootId, setRootId] = useState<string | null>(() => sessionStorage.getItem('gallery-root-id'))
-  const [testData, setTestData] = useState<any>(null)
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
@@ -94,32 +91,6 @@ export default function Home() {
     }
   }
 
-  async function handleSaveTest() {
-    try {
-      const token = getToken()
-      if (!token) throw new Error('No hay token')
-      const saved = await saveTestFile(token)
-      setTestData(saved)
-      alert(es.app.testSaved)
-    } catch (e: any) {
-      console.error('Test write failed', e)
-      alert(friendlyError(e, es.errors.unexpected))
-    }
-  }
-
-  async function handleLoadTest() {
-    try {
-      const token = getToken()
-      if (!token) throw new Error('No hay token')
-      const loaded = await loadTestFile(token)
-      setTestData(loaded)
-      alert(es.app.testLoaded)
-    } catch (e: any) {
-      console.error('Test read failed', e)
-      alert(friendlyError(e, es.errors.unexpected))
-    }
-  }
-
   async function handleExport() {
     setExporting(true)
     try {
@@ -190,71 +161,18 @@ export default function Home() {
             {es.app.rootFolderId}: {rootId}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-            <Link to="/galeria" className="menu-card">
-              <span className="menu-icon">
-                <PictureIcon className="w-6 h-6" />
-              </span>
-              <span className="min-w-0 text-left">
-                <span className="block font-semibold">{es.app.goGallery}</span>
-                <span className="block text-xs text-[var(--muted)]">{es.app.subGallery}</span>
-              </span>
-            </Link>
-            <Link to="/colecciones" className="menu-card">
-              <span className="menu-icon">
-                <BinderIcon className="w-6 h-6" />
-              </span>
-              <span className="min-w-0 text-left">
-                <span className="block font-semibold">{es.app.goCollections}</span>
-                <span className="block text-xs text-[var(--muted)]">{es.app.subCollections}</span>
-              </span>
-            </Link>
-            <Link to="/entregas" className="menu-card">
-              <span className="menu-icon">
-                <ClipboardIcon className="w-6 h-6" />
-              </span>
-              <span className="min-w-0 text-left">
-                <span className="block font-semibold">{es.app.goEntregas}</span>
-                <span className="block text-xs text-[var(--muted)]">{es.app.subEntregas}</span>
-              </span>
-            </Link>
-            <Link to="/pencil-test" className="menu-card">
-              <span className="menu-icon">
-                <PencilIcon className="w-6 h-6" />
-              </span>
-              <span className="min-w-0 text-left">
-                <span className="block font-semibold">{es.app.goPencilTest}</span>
-                <span className="block text-xs text-[var(--muted)]">{es.app.subPencil}</span>
-              </span>
-            </Link>
-            <button onClick={handleExport} disabled={exporting} className="menu-card sm:col-span-2">
-              <span className="menu-icon">
-                <DownloadIcon className="w-6 h-6" />
-              </span>
-              <span className="min-w-0 text-left">
-                <span className="block font-semibold">
-                  {exporting ? es.app.exporting : es.app.exportZip}
-                </span>
-                <span className="block text-xs text-[var(--muted)]">{es.app.subExport}</span>
-              </span>
-            </button>
-          </div>
+      <div className="panel w-full p-4 flex flex-col items-center gap-3">
+        <button onClick={handleExport} disabled={exporting} className="btn btn-soft">
+          {exporting ? es.app.exporting : es.app.exportZip}
+        </button>
+        <span className="text-xs text-[var(--muted)]">{es.app.subExport}</span>
+      </div>
 
           <div className="panel w-full p-4 flex flex-col items-center gap-3">
-            <p className="text-sm text-[var(--muted)]">{es.app.devTools}</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <button onClick={handleSaveTest} className="btn btn-soft">
-                {es.app.testWrite}
-              </button>
-              <button onClick={handleLoadTest} className="btn btn-soft">
-                {es.app.testRead}
-              </button>
-            </div>
-            {testData && (
-              <pre className="max-w-xl w-full overflow-auto p-3 rounded-2xl bg-black/30 text-sm">
-                {JSON.stringify(testData, null, 2)}
-              </pre>
-            )}
+            <button onClick={handleExport} disabled={exporting} className="btn btn-soft">
+              {exporting ? es.app.exporting : es.app.exportZip}
+            </button>
+            <span className="text-xs text-[var(--muted)]">{es.app.subExport}</span>
           </div>
         </div>
       )}

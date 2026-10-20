@@ -17,9 +17,8 @@ export default function PencilTest() {
   const updateSecuencia = useGalleryStore((s) => s.updateSecuencia)
   const [files, setFiles] = useState<File[]>([])
   const [fps, setFps] = useState(12)
-  const [titulo, setTitulo] = useState('Pencil test')
+  const [titulo, setTitulo] = useState('Animación')
   const [playing, setPlaying] = useState(false)
-  const [onion, setOnion] = useState(0.4)
   const [currentSecId, setCurrentSecId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   const [urls, setUrls] = useState<string[]>([])
@@ -106,7 +105,7 @@ export default function PencilTest() {
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 fade-up">
           <PencilIcon className="hidden sm:block w-7 h-7 shrink-0 text-[var(--accent-soft)]" />
-          <h1 className="text-xl sm:text-2xl font-bold gradient-text truncate">{es.pencil.title}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold gradient-text truncate">Animaciones</h1>
         </div>
         <div className="flex items-center gap-3 shrink-0 fade-up">
           <Link to="/" className="btn btn-soft">
@@ -149,17 +148,15 @@ export default function PencilTest() {
           {playing ? es.pencil.pause : es.pencil.play}
         </button>
         <label className="flex items-center gap-2 text-sm">
-          <span className="whitespace-nowrap">
-            {es.pencil.onion} {Math.round(onion * 100)}%
-          </span>
+          <span className="whitespace-nowrap">{es.pencil.fps}</span>
           <input
-            type="range"
-            min={0}
-            max={0.8}
-            step={0.1}
-            value={onion}
-            onChange={(e) => setOnion(Number(e.target.value))}
-            className="accent-[var(--accent)] min-h-[44px]"
+            type="number"
+            value={fps}
+            min={6}
+            max={24}
+            onChange={(e) => setFps(Number(e.target.value))}
+            aria-label={es.pencil.fps}
+            className="field w-24"
           />
         </label>
       </div>
@@ -167,14 +164,6 @@ export default function PencilTest() {
       {sec && urls.length > 0 ? (
         <div className="flex flex-col items-center gap-3">
           <div className="relative w-full max-w-3xl aspect-[4/3] bg-black border-2 border-[var(--border)] rounded-2xl overflow-hidden shadow-lg">
-            {urls[(index - 1 + urls.length) % urls.length] && onion > 0 && (
-              <img
-                src={urls[(index - 1 + urls.length) % urls.length]}
-                alt=""
-                className="absolute inset-0 w-full h-full object-contain"
-                style={{ opacity: onion }}
-              />
-            )}
             {urls[index % urls.length] && (
               <img
                 src={urls[index % urls.length]}

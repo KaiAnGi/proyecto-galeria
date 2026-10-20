@@ -116,12 +116,6 @@ export default function Entregas() {
           className="field grow min-w-[12rem]"
         />
         <input
-          value={asignatura}
-          onChange={(e) => setAsignatura(e.target.value)}
-          placeholder={es.entregas.subject}
-          className="field grow min-w-[9rem]"
-        />
-        <input
           type="date"
           value={fechaLimite}
           onChange={(e) => setFechaLimite(e.target.value)}

@@ -68,7 +68,7 @@ export default function Colecciones() {
           <option value="cuaderno">{es.collections.tipo.cuaderno}</option>
           <option value="clase">{es.collections.tipo.clase}</option>
         </select>
-        <button onClick={crear} className="btn btn-primary">
+        <button onClick={crear} type="button" className="btn btn-primary">
           <PlusIcon className="w-5 h-5" />
           {es.collections.create}
         </button>
