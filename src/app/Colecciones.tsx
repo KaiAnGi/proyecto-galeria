@@ -44,9 +44,14 @@ export default function Colecciones() {
           <BinderIcon className="hidden sm:block w-8 h-8 shrink-0 text-[var(--accent-soft)]" />
           <h1 className="text-2xl sm:text-3xl font-bold gradient-text truncate">{es.collections.title}</h1>
         </div>
-        <Link to="/galeria" className="btn btn-soft shrink-0">
-          {es.collections.back}
-        </Link>
+        <div className="flex items-center gap-3 shrink-0 fade-up">
+          <Link to="/" className="btn btn-soft">
+            ← Volver
+          </Link>
+          <Link to="/galeria" className="btn btn-soft">
+            {es.collections.back}
+          </Link>
+        </div>
       </header>
 
       <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>

@@ -31,9 +31,14 @@ export default function ColeccionDetail() {
           {coleccion.nombre}
           {coleccion.tipo === 'cuaderno' && ` · ${es.collections.notebook}`}
         </h1>
-        <Link to="/colecciones" className="btn btn-soft shrink-0">
-          {es.collections.back}
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link to="/" className="btn btn-soft">
+            ← Volver
+          </Link>
+          <Link to="/colecciones" className="btn btn-soft">
+            {es.collections.back}
+          </Link>
+        </div>
       </header>
 
       {ordered.length === 0 ? (

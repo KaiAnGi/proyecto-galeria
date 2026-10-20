@@ -116,9 +116,14 @@ export default function ObraDetail() {
     <div className="min-h-full p-4 sm:p-6 flex flex-col gap-6">
       <header className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <Link to="/galeria" className="btn btn-soft">
-            {es.obra.back}
-          </Link>
+          <div className="flex items-center gap-2 mb-2">
+            <Link to="/" className="btn btn-soft">
+              ← Volver
+            </Link>
+            <Link to="/galeria" className="btn btn-soft">
+              {es.obra.back.replace('← ', '')}
+            </Link>
+          </div>
           <input
             aria-label={es.obra.title}
             value={titleDraft}

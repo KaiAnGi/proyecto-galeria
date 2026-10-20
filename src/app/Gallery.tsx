@@ -97,13 +97,18 @@ export default function Gallery() {
             {obras.length > 0 && <p className="text-xs text-[var(--muted)]">{es.gallery.count(obras.length)}</p>}
           </div>
         </div>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="btn btn-accent shrink-0 fade-up"
-        >
-          <PlusIcon className="w-5 h-5" />
-          {es.gallery.add}
-        </button>
+        <div className="flex items-center gap-3 shrink-0 fade-up">
+          <Link to="/" className="btn btn-soft">
+            {es.obra.back}
+          </Link>
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            className="btn btn-accent"
+          >
+            <PlusIcon className="w-5 h-5" />
+            {es.gallery.add}
+          </button>
+        </div>
       </header>
 
       {showAdd && (

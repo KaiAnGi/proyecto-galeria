@@ -108,9 +108,14 @@ export default function PencilTest() {
           <PencilIcon className="hidden sm:block w-7 h-7 shrink-0 text-[var(--accent-soft)]" />
           <h1 className="text-xl sm:text-2xl font-bold gradient-text truncate">{es.pencil.title}</h1>
         </div>
-        <Link to="/galeria" className="btn btn-soft shrink-0">
-          {es.pencil.back}
-        </Link>
+        <div className="flex items-center gap-3 shrink-0 fade-up">
+          <Link to="/" className="btn btn-soft">
+            ← Volver
+          </Link>
+          <Link to="/galeria" className="btn btn-soft">
+            {es.pencil.back}
+          </Link>
+        </div>
       </header>
 
       <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>

@@ -101,9 +101,11 @@ export default function Entregas() {
           <MoonSticker className="hidden sm:block w-11 h-11 shrink-0 sticker-float sticker-shadow" />
           <h1 className="text-2xl sm:text-3xl font-bold gradient-text truncate">{es.entregas.title}</h1>
         </div>
-        <Link to="/" className="btn btn-soft shrink-0">
-          {es.obra.back}
-        </Link>
+        <div className="flex items-center gap-3 shrink-0 fade-up">
+          <Link to="/" className="btn btn-soft">
+            ← Volver
+          </Link>
+        </div>
       </header>
 
       <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>
