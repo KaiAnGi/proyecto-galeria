@@ -42,7 +42,7 @@ export async function signInWithGoogle(): Promise<string> {
   if (tokenClient) {
     try {
       if (hasValidToken()) return token as string
-      tokenClient.requestAccessToken({ prompt: '' })
+      tokenClient.requestAccessToken({ prompt: 'select_account' })
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('Timeout al renovar token')), 30000)
         const orig = tokenClient.callback
@@ -80,7 +80,7 @@ export async function signInWithGoogle(): Promise<string> {
       },
     })
 
-    tokenClient.requestAccessToken({ prompt: 'consent' })
+    tokenClient.requestAccessToken({ prompt: 'select_account' })
   })
 }
 
