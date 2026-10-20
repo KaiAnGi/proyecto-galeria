@@ -170,6 +170,28 @@
     loadingCompare: 'Cargando las dos imágenes...',
     alt: (obra: string, version: string) => `${obra} — ${version}`,
   },
+  palette: {
+    title: 'Paleta',
+    extract: 'Extraer colores',
+    empty: 'Sin colores aún',
+  },
+  stats: {
+    title: 'Estadísticas',
+    streak: 'Racha de días',
+    total: 'Total de dibujos',
+    drawings: (n: number) => (n === 1 ? '1 dibujo' : `${n} dibujos`),
+    days: (n: number) => (n === 1 ? '1 día' : `${n} días`),
+    lastDays: 'Últimos días',
+  },
+  moodboard: {
+    title: 'Moodboard',
+    add: 'Añadir referencia',
+    empty: 'Añade imágenes de inspiración aquí',
+    remove: 'Quitar',
+  },
+  easter: {
+    hint: 'Hay algo escondido...',
+  },
   pencil: {
     title: 'Pencil Test',
     back: 'Volver',
