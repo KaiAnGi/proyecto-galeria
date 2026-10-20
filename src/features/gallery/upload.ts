@@ -6,6 +6,7 @@ import type { Obra, Archivo } from './store'
 import { useGalleryStore } from './store'
 import { getToken } from '../auth/googleAuth'
 import { findRootFolder, createFolder } from '../drive/driveClient'
+import { computeOrigen } from './versions'
 
 export async function ensureFolder(token: string, rootId: string, name: string, kind: string): Promise<string> {
   const q = encodeURIComponent(`name='${name}' and trashed=false and '${rootId}' in parents`)
@@ -201,4 +202,80 @@ export async function uploadDrawings(files: File[]): Promise<Obra[]> {
   }
 
   return obras
+}
+
+export async function uploadObraVersion(
+  token: string,
+  obra: Obra,
+  file: File,
+  rol: Archivo['rol'],
+  etapa?: Archivo['etapa'],
+): Promise<Obra> {
+  const folders = await getFolderIds(token)
+  const id = ulid()
+  const isoDate = new Date().toISOString()
+  const kind = classifyFile(file)
+
+  let archivo: Archivo
+
+  if (kind === 'gif') {
+    const upOrig = await uploadBlob(token, file, `${id}-original`, [folders.originalesId], {
+      kind: 'original',
+      obraId: obra.id,
+    })
+    const bmp = await fileToBitmap(file)
+    const miniDataUrl = await createMiniDataUrl(bmp, 480, 0.8)
+    const miniBlob = await (await fetch(miniDataUrl)).blob()
+    await uploadBlob(token, miniBlob, `${id}-mini.webp`, [folders.miniaturasId], { kind: 'miniatura', obraId: obra.id })
+    archivo = {
+      id,
+      tipo: 'gif',
+      rol,
+      etapa,
+      orden: obra.archivos.length,
+      mime: 'image/gif',
+      ancho: bmp.width,
+      alto: bmp.height,
+      bytes: file.size,
+      tomadaEn: isoDate,
+      drive: { originalId: upOrig.id, galeriaId: upOrig.id },
+    }
+  } else {
+    const bmp = await fileToBitmap(file)
+    const galeriaBlob = await resizeToMaxDimensions(bmp, 2400, 'image/webp', 0.85)
+    const galeriaMime = determineMime(galeriaBlob.type)
+    const galeriaBlobFinal =
+      galeriaMime === 'image/webp' ? galeriaBlob : await resizeToMaxDimensions(bmp, 2400, 'image/jpeg', 0.85)
+
+    const miniDataUrl = await createMiniDataUrl(bmp, 480, 0.8)
+    const miniBlob = await (await fetch(miniDataUrl)).blob()
+    await uploadBlob(token, miniBlob, `${id}-mini.webp`, [folders.miniaturasId], { kind: 'miniatura', obraId: obra.id })
+
+    const galeriaName =
+      galeriaBlobFinal.type.includes('jpeg') || galeriaBlobFinal.type.includes('jpg') ? `${id}.jpg` : `${id}.webp`
+    const upOrig = await uploadBlob(token, file, `${id}-original`, [folders.originalesId], {
+      kind: 'original',
+      obraId: obra.id,
+    })
+    const upGal = await uploadBlob(token, galeriaBlobFinal, galeriaName, [folders.galeriaId], {
+      kind: 'galeria',
+      obraId: obra.id,
+    })
+    archivo = {
+      id,
+      tipo: 'imagen',
+      rol,
+      etapa,
+      orden: obra.archivos.length,
+      mime: galeriaBlobFinal.type || 'image/webp',
+      ancho: bmp.width,
+      alto: bmp.height,
+      bytes: file.size,
+      tomadaEn: isoDate,
+      drive: { originalId: upOrig.id, galeriaId: upGal.id },
+    }
+  }
+
+  const archivos = [...obra.archivos, archivo]
+  return { ...obra, archivos, origen: computeOrigen(archivos), updatedAt: isoDate }
 }

@@ -150,6 +150,25 @@ h3,
   font-weight: 600;
 }
 
+.chip.chip-btn {
+  min-height: 44px;
+  padding-inline: 1.1rem;
+  font-size: 0.9rem;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.chip.chip-btn:hover {
+  border-color: var(--accent);
+}
+
+.chip.chip-btn[aria-pressed='true'] {
+  background: rgba(255, 79, 163, 0.32);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 ::selection {
   background: rgba(255, 79, 163, 0.45);
   color: #fff;

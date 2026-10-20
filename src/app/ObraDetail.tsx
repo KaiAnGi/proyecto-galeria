@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import ZoomableImage from '../features/gallery/ZoomableImage'
 import VideoPlayer from '../features/gallery/VideoPlayer'
-import { downloadFileAsBlob } from '../features/drive/driveImageClient'
+import CompareSlider from '../features/gallery/CompareSlider'
+import Versiones from '../features/gallery/Versiones'
+import { useDriveImage } from '../features/gallery/useDriveImage'
+import { comparePair } from '../features/gallery/versions'
 import { saveObra } from '../features/gallery/persistence'
 import { parseList } from '../features/gallery/filters'
 import { getToken } from '../features/auth/googleAuth'
@@ -21,31 +24,26 @@ export default function ObraDetail() {
   const [tecnicasDraft, setTecnicasDraft] = useState(obra?.tecnicas.join(', ') ?? '')
   const [tagsDraft, setTagsDraft] = useState(obra?.tags.join(', ') ?? '')
   const [lastObraId, setLastObraId] = useState<string | undefined>(obra?.id)
-  const [mediaState, setMediaState] = useState<{ id: string | null; url: string | null }>({ id: null, url: null })
-  const archivoFirst = obra?.archivos[0]
-  const isVideo = archivoFirst?.tipo === 'video'
-  const mediaId = isVideo ? archivoFirst?.drive.originalId : archivoFirst?.drive.galeriaId
-  const mediaUrl = mediaState.id === mediaId ? mediaState.url : null
+  const [selectedArchivoId, setSelectedArchivoId] = useState<string | null>(null)
+  const [compareOn, setCompareOn] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    let objUrl: string | null = null
-    const token = getToken()
-    if (!mediaId || !token) return
-    downloadFileAsBlob(token, mediaId)
-      .then((blob: Blob) => {
-        if (cancelled) return
-        objUrl = URL.createObjectURL(blob)
-        setMediaState({ id: mediaId, url: objUrl })
-      })
-      .catch(() => {
-        // fallback a miniatura
-      })
-    return () => {
-      cancelled = true
-      if (objUrl) URL.revokeObjectURL(objUrl)
-    }
-  }, [mediaId])
+  const selectedArchivo = obra?.archivos.find((a) => a.id === selectedArchivoId) ?? obra?.archivos[0]
+  const isVideo = selectedArchivo?.tipo === 'video'
+  const mediaId = selectedArchivo
+    ? isVideo
+      ? selectedArchivo.drive.originalId
+      : (selectedArchivo.drive.galeriaId ?? selectedArchivo.drive.originalId)
+    : null
+  const mediaUrl = useDriveImage(mediaId)
+
+  const pair = obra ? comparePair(obra) : null
+  const canCompare = pair !== null
+  const compareActive = compareOn && canCompare && !isVideo
+  const beforeId = compareActive ? (pair?.[0].drive.galeriaId ?? pair?.[0].drive.originalId) : null
+  const afterId = compareActive ? (pair?.[1].drive.galeriaId ?? pair?.[1].drive.originalId) : null
+  const beforeUrl = useDriveImage(beforeId)
+  const afterUrl = useDriveImage(afterId)
+  const compareLoading = compareActive && (!beforeUrl || !afterUrl)
 
   if ((obra?.id ?? undefined) !== lastObraId) {
     setLastObraId(obra?.id ?? undefined)
@@ -53,6 +51,8 @@ export default function ObraDetail() {
     setNotesDraft(obra?.notas ?? '')
     setTecnicasDraft(obra?.tecnicas.join(', ') ?? '')
     setTagsDraft(obra?.tags.join(', ') ?? '')
+    setSelectedArchivoId(null)
+    setCompareOn(false)
   }
 
   if (!obra) {
@@ -140,18 +140,41 @@ export default function ObraDetail() {
       </header>
 
       <section className="flex items-center justify-center">
-        {isVideo ? (
+        {compareActive ? (
+          compareLoading ? (
+            <div className="py-16 text-[var(--muted)]">{es.versions.loadingCompare}</div>
+          ) : (
+            <CompareSlider
+              srcBefore={beforeUrl ?? obra.miniatura}
+              srcAfter={afterUrl ?? obra.miniatura}
+              altBefore={es.versions.alt(obra.titulo, es.versions.before)}
+              altAfter={es.versions.alt(obra.titulo, es.versions.after)}
+            />
+          )
+        ) : isVideo ? (
           mediaUrl ? (
             <VideoPlayer src={mediaUrl} />
           ) : (
             <div className="py-16 text-[var(--muted)]">{es.app.loading}</div>
           )
-        ) : archivoFirst ? (
+        ) : selectedArchivo ? (
           <ZoomableImage src={mediaUrl ?? obra.miniatura} alt={obra.titulo} />
         ) : (
           <div className="py-16 text-[var(--muted)]">{es.gallery.noImage}</div>
         )}
       </section>
+
+      <Versiones
+        obra={obra}
+        selectedId={selectedArchivo?.id ?? ''}
+        onSelect={(archivoId) => {
+          setSelectedArchivoId(archivoId)
+          setCompareOn(false)
+        }}
+        compareOn={compareOn}
+        canCompare={canCompare}
+        onToggleCompare={() => setCompareOn((v) => !v)}
+      />
 
       <section className="grid sm:grid-cols-2 gap-4">
         <div className="panel p-4">

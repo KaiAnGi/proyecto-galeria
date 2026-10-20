@@ -18,14 +18,15 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Borrado suave con "Deshacer"; al expirar, los archivos se mueven a la papelera de Drive.
 - Imagen de galería ≤2400 px, miniatura y corrección de EXIF/HEIC.
 
-### Fase 2 — Organización (hecha, menos los pares y las versiones)
+### Fase 2 — Organización (hecha)
 - Colecciones y cuadernos, con vista de detalle y orden de páginas.
 - Persistencia de colecciones en Drive (`_datos/colecciones/coleccion-<id>.json`).
 - Búsqueda por título y notas (ignora mayúsculas y acentos).
 - Filtros por estado, colección, técnica y etiqueta; los desplegables se rellenan
   con lo que hay en la galería y hay botón "Quitar filtros".
 - Edición en la ficha de la obra: estado, técnicas y etiquetas (se guardan en Drive).
-- Pendiente de esta fase: pares tradicional→digital y versiones con deslizador.
+- Pares tradicional→digital y versiones con línea de tiempo y deslizador antes/después.
+- Añadir versiones (imagen/GIF) con tipo, etapa y guardado en Drive.
 
 ### Fase 3 — Animación y clase (hecha)
 - Pencil test: subida de fotogramas en orden, reproducción de 6 a 24 fps con bucle,
