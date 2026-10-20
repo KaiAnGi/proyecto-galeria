@@ -7,6 +7,8 @@ export default function ColeccionDetail() {
   const { id } = useParams<{ id: string }>()
   const coleccion = useGalleryStore((s) => s.colecciones.find((c) => c.id === id))
   const obras = useGalleryStore((s) => s.obras.filter((o) => o.coleccionIds.includes(id!)))
+  const allObras = useGalleryStore((s) => s.obras)
+  const addObraToColeccion = useGalleryStore((s) => s.addObraToColeccion)
 
   if (!coleccion) {
     return (
@@ -32,6 +34,25 @@ export default function ColeccionDetail() {
           {coleccion.tipo === 'cuaderno' && ` · ${es.collections.notebook}`}
         </h1>
         <div className="flex items-center gap-2 shrink-0">
+          <select
+            value=""
+            onChange={(e) => {
+              const obraId = e.target.value
+              if (obraId && id) addObraToColeccion(obraId, id)
+              e.target.value = ''
+            }}
+            className="field"
+            aria-label="Añadir dibujos a la colección"
+          >
+            <option value="">Añadir dibujo...</option>
+            {allObras
+              .filter((o) => !o.coleccionIds.includes(id!))
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.titulo || es.collections.untitled}
+                </option>
+              ))}
+          </select>
           <Link to="/" className="btn btn-soft">
             ← Volver
           </Link>

@@ -28,6 +28,7 @@ export default function Gallery() {
   const [error, setError] = useState<string | null>(null)
   const [undoId, setUndoId] = useState<string | null>(null)
   const [filters, setFilters] = useState<ObrasFilters>(emptyFilters)
+  const [loading, setLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const facets = useMemo(() => collectFacets(obras), [obras])
@@ -50,10 +51,24 @@ export default function Gallery() {
 
   useEffect(() => {
     const token = getToken()
-    if (!token) return
-    ensureLoaded(token).catch(() => {
-      // sin conexión: se muestra lo que ya hubiera en memoria
-    })
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setTimeout(() => {
+      setLoading(true)
+      ensureLoaded(token)
+        .catch(() => {
+          // sin conexión
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }, 0)
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -243,7 +258,17 @@ export default function Gallery() {
       </div>
 
       <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {obras.length === 0 ? (
+        {loading ? (
+          <div className="col-span-full flex flex-col items-center text-center gap-3 py-10">
+            <img
+              src="./icon.png"
+              alt=""
+              aria-hidden="true"
+              className="w-20 h-20 sticker-shadow sticker-float hop object-contain"
+            />
+            <p className="text-sm text-[var(--muted)]">Revisando si has subido dibujitos...</p>
+          </div>
+        ) : obras.length === 0 ? (
           <div className="col-span-full flex flex-col items-center text-center gap-3 py-10">
             <img
               src="./icon.png"
