@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
-import { Link } from 'react-router-dom'
 import { uploadDrawings } from '../features/gallery/upload'
 import { ensureLoaded, trashObra } from '../features/gallery/persistence'
 import {
@@ -10,13 +10,14 @@ import {
   hasActiveFilters,
   type ObrasFilters,
 } from '../features/gallery/filters'
-import { getToken } from '../features/auth/googleAuth'
+import { getToken, hasValidToken, initGoogleAuth, signInWithGoogle } from '../features/auth/googleAuth'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { SkullBowSticker } from '../components/Stickers'
 import { PlusIcon, CameraIcon, ImagesIcon, SearchIcon } from '../components/Icons'
 
 export default function Gallery() {
+  const navigate = useNavigate()
   const obras = useGalleryStore((s) => s.obras)
   const colecciones = useGalleryStore((s) => s.colecciones)
   const removeObraSoft = useGalleryStore((s) => s.removeObraSoft)
@@ -32,6 +33,16 @@ export default function Gallery() {
   const facets = useMemo(() => collectFacets(obras), [obras])
   const visibles = useMemo(() => filterObras(obras, filters), [obras, filters])
   const filtering = hasActiveFilters(filters)
+
+  async function ensureValidToken(): Promise<string> {
+    let token = getToken()
+    if (hasValidToken() && token) return token
+    await initGoogleAuth()
+    await signInWithGoogle()
+    token = getToken()
+    if (!token || !hasValidToken()) throw new Error('No hay token válido')
+    return token
+  }
 
   function patchFilters(patch: Partial<ObrasFilters>) {
     setFilters((prev) => ({ ...prev, ...patch }))
@@ -62,13 +73,18 @@ export default function Gallery() {
     setUploading(true)
     setError(null)
     try {
+      await ensureValidToken()
       const list = Array.from(files)
       await uploadDrawings(list)
       setShowAdd(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (e) {
+    } catch (e: any) {
       console.error('Upload failed', e)
-      setError(friendlyError(e, es.gallery.uploadError))
+      const msg = friendlyError(e, es.gallery.uploadError)
+      setError(msg)
+      if (msg === es.errors.session || msg === es.errors.network) {
+        navigate('/')
+      }
     } finally {
       setUploading(false)
     }

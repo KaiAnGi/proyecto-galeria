@@ -12,27 +12,58 @@ import { PictureIcon, BinderIcon, ClipboardIcon, PencilIcon, DownloadIcon } from
 export default function Home() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'connected' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [rootId, setRootId] = useState<string | null>(null)
+  const [rootId, setRootId] = useState<string | null>(() => sessionStorage.getItem('gallery-root-id'))
   const [testData, setTestData] = useState<any>(null)
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const token = getToken()
-    if (!hasValidToken() || !token) {
+    if (!token) {
       return
     }
+    if (hasValidToken()) {
+      let cancelled = false
+      const t = setTimeout(() => {
+        setStatus('connected')
+        initDriveStructure(token)
+          .then((root) => {
+            if (cancelled) return
+            setRootId(root)
+            sessionStorage.setItem('gallery-root-id', root)
+          })
+          .catch((e) => {
+            if (cancelled) return
+            console.error('Restore drive structure failed', e)
+          })
+      }, 0)
+      return () => {
+        cancelled = true
+        clearTimeout(t)
+      }
+    }
+    // try to refresh
     let cancelled = false
     const t = setTimeout(() => {
       setStatus('loading')
-      initDriveStructure(token)
+      initGoogleAuth()
+        .then(() => signInWithGoogle())
+        .then(() => {
+          if (cancelled) return
+          const t2 = getToken()
+          if (!t2 || !hasValidToken()) throw new Error('No se obtuvo token')
+          return initDriveStructure(t2)
+        })
         .then((root) => {
           if (cancelled) return
-          setRootId(root)
+          if (typeof root === 'string') {
+            setRootId(root)
+            sessionStorage.setItem('gallery-root-id', root)
+          }
           setStatus('connected')
         })
         .catch((e) => {
           if (cancelled) return
-          console.error('Restore drive structure failed', e)
+          console.error('Refresh failed', e)
           setStatus('idle')
         })
     }, 0)
@@ -54,6 +85,7 @@ export default function Home() {
       }
       const root = await initDriveStructure(token)
       setRootId(root)
+      sessionStorage.setItem('gallery-root-id', root)
       setStatus('connected')
     } catch (e: any) {
       console.error('Connect failed', e)
