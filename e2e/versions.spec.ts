@@ -1,24 +1,39 @@
-import { test, expect } from '@playwright/test'
-import { stubGis, stubDriveMemory, createGif } from '../helpers'
+import { test, expect, type Page } from '@playwright/test'
+import { stubGis, stubDriveMemory } from './helpers'
+
+const GIF_1PX = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
+
+async function connect(page: Page): Promise<void> {
+  await stubGis(page)
+  await stubDriveMemory(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
+  await expect(page.getByText('Carpeta raíz:')).toBeVisible()
+}
 
 test.describe('Versiones (pares y línea de tiempo)', () => {
   test('añadir versión digital y comparar antes/después', async ({ page }) => {
-    await stubGis(page)
-    await stubDriveMemory(page)
-    const gif = await createGif(40, 40)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
-    await page.getByLabel('Sube tus dibujos').setInputFiles({ name: 'papel.gif', mimeType: 'image/gif', buffer: gif })
-    await page.getByRole('button', { name: 'Ver mis obras' }).click()
-    await expect(page.getByRole('link', { name: /papel/i })).toBeVisible()
-    await page.getByRole('link', { name: /papel/i }).click()
+    await connect(page)
+    await page.goto('/#/galeria')
+    await page.getByRole('button', { name: 'Añadir dibujo' }).click()
+    await page.locator('input[type="file"][multiple]').setInputFiles({
+      name: 'papel.gif',
+      mimeType: 'image/gif',
+      buffer: GIF_1PX,
+    })
+    await expect(page.getByRole('heading', { name: 'Sin título' })).toBeVisible()
+    await page.getByRole('heading', { name: 'Sin título' }).click()
     await expect(page.getByText('Versiones')).toBeVisible()
     await page.getByRole('button', { name: 'Añadir versión' }).click()
     await page.getByLabel('Está en').selectOption('digital')
     await page.getByLabel('Etapa').selectOption('final')
-    await page.getByLabel('Elegir imagen de la versión').setInputFiles({ name: 'digital.gif', mimeType: 'image/gif', buffer: gif })
-    await expect(page.getByRole('button', { name: 'Línea' })).toBeVisible({ timeout: 15000 })
-    await expect(page.getByRole('button', { name: 'En papel' })).toBeVisible()
+    await page.getByLabel('Elegir imagen de la versión').setInputFiles({
+      name: 'digital.gif',
+      mimeType: 'image/gif',
+      buffer: GIF_1PX,
+    })
+    await expect(page.getByRole('button', { name: 'Final' })).toBeVisible({ timeout: 20000 })
+    await expect(page.getByRole('button', { name: 'Digital' })).toBeVisible()
     await page.getByRole('button', { name: 'Comparar antes y después' }).click()
     await expect(page.getByRole('slider', { name: 'Desliza para comparar las dos imágenes' })).toBeVisible()
     await page.getByRole('slider', { name: 'Desliza para comparar las dos imágenes' }).focus()
@@ -29,21 +44,29 @@ test.describe('Versiones (pares y línea de tiempo)', () => {
   })
 
   test('persistencia al recargar', async ({ page }) => {
-    await stubGis(page)
-    await stubDriveMemory(page)
-    const gif = await createGif(40, 40)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
-    await page.getByLabel('Sube tus dibujos').setInputFiles({ name: 'papel.gif', mimeType: 'image/gif', buffer: gif })
-    await page.getByRole('button', { name: 'Ver mis obras' }).click()
-    await page.getByRole('link', { name: /papel/i }).click()
+    await connect(page)
+    await page.goto('/#/galeria')
+    await page.getByRole('button', { name: 'Añadir dibujo' }).click()
+    await page.locator('input[type="file"][multiple]').setInputFiles({
+      name: 'papel.gif',
+      mimeType: 'image/gif',
+      buffer: GIF_1PX,
+    })
+    await expect(page.getByRole('heading', { name: 'Sin título' })).toBeVisible()
+    await page.getByRole('heading', { name: 'Sin título' }).click()
     await page.getByRole('button', { name: 'Añadir versión' }).click()
     await page.getByLabel('Está en').selectOption('digital')
-    await page.getByLabel('Elegir imagen de la versión').setInputFiles({ name: 'digital.gif', mimeType: 'image/gif', buffer: gif })
-    await expect(page.getByRole('button', { name: 'Línea' })).toBeVisible({ timeout: 15000 })
+    await page.getByLabel('Etapa').selectOption('final')
+    await page.getByLabel('Elegir imagen de la versión').setInputFiles({
+      name: 'digital.gif',
+      mimeType: 'image/gif',
+      buffer: GIF_1PX,
+    })
+    await expect(page.getByRole('button', { name: 'Final' })).toBeVisible({ timeout: 20000 })
+    await expect(page.getByRole('button', { name: 'Digital' })).toBeVisible()
     await page.reload()
-    await expect(page.getByRole('button', { name: 'En papel' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Línea' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Digital' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Final' })).toBeVisible()
     await page.getByRole('button', { name: 'Comparar antes y después' }).click()
     await expect(page.getByRole('slider')).toBeVisible()
   })

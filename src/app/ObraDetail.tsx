@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import ZoomableImage from '../features/gallery/ZoomableImage'
@@ -10,6 +10,7 @@ import { comparePair } from '../features/gallery/versions'
 import { saveObra } from '../features/gallery/persistence'
 import { parseList } from '../features/gallery/filters'
 import { getToken } from '../features/auth/googleAuth'
+import { ensureLoaded } from '../features/gallery/persistence'
 import type { Obra } from '../features/gallery/store'
 import { es } from '../i18n/es'
 
@@ -26,6 +27,12 @@ export default function ObraDetail() {
   const [lastObraId, setLastObraId] = useState<string | undefined>(obra?.id)
   const [selectedArchivoId, setSelectedArchivoId] = useState<string | null>(null)
   const [compareOn, setCompareOn] = useState(false)
+
+  useEffect(() => {
+    const token = getToken()
+    if (!token) return
+    ensureLoaded(token).catch(() => undefined)
+  }, [])
 
   const selectedArchivo = obra?.archivos.find((a) => a.id === selectedArchivoId) ?? obra?.archivos[0]
   const isVideo = selectedArchivo?.tipo === 'video'
