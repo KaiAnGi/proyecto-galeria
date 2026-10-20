@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { es } from '../i18n/es'
 import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../features/auth/googleAuth'
@@ -15,6 +15,32 @@ export default function Home() {
   const [rootId, setRootId] = useState<string | null>(null)
   const [testData, setTestData] = useState<any>(null)
   const [exporting, setExporting] = useState(false)
+
+  useEffect(() => {
+    const token = getToken()
+    if (!hasValidToken() || !token) {
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(() => {
+      setStatus('loading')
+      initDriveStructure(token)
+        .then((root) => {
+          if (cancelled) return
+          setRootId(root)
+          setStatus('connected')
+        })
+        .catch((e) => {
+          if (cancelled) return
+          console.error('Restore drive structure failed', e)
+          setStatus('idle')
+        })
+    }, 0)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [])
 
   async function handleConnect() {
     setStatus('loading')
