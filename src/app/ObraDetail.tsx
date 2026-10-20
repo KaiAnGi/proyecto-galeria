@@ -13,6 +13,7 @@ import { getToken } from '../features/auth/googleAuth'
 import { ensureLoaded } from '../features/gallery/persistence'
 import type { Obra } from '../features/gallery/store'
 import { es } from '../i18n/es'
+import CuteComment from '../components/CuteComment'
 
 export default function ObraDetail() {
   const { id } = useParams<{ id: string }>()
@@ -244,6 +245,7 @@ export default function ObraDetail() {
           </div>
         </div>
       </section>
+      <CuteComment />
     </div>
   )
 }

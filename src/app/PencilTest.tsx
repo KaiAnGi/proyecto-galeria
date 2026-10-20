@@ -10,6 +10,7 @@ import { downloadFileAsBlob } from '../features/drive/driveImageClient'
 import { es } from '../i18n/es'
 import { BatSticker } from '../components/Stickers'
 import { PlusIcon, PencilIcon } from '../components/Icons'
+import CuteComment from '../components/CuteComment'
 
 export default function PencilTest() {
   const secuencias = useGalleryStore((s) => s.secuencias)
@@ -22,13 +23,30 @@ export default function PencilTest() {
   const [currentSecId, setCurrentSecId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   const [urls, setUrls] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const sec = secuencias.find((s) => s.id === currentSecId) || secuencias[0]
 
   useEffect(() => {
     const token = getToken()
-    if (!token) return
-    ensureLoaded(token).catch(() => undefined)
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setTimeout(() => {
+      setLoading(true)
+      ensureLoaded(token)
+        .catch(() => undefined)
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }, 0)
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -81,23 +99,32 @@ export default function PencilTest() {
 
   async function createFromFiles() {
     if (files.length === 0) return
-    const uploaded = await uploadFrames(files)
-    const frames = uploaded.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
-    const s = withUpdatedAt({
-      schema: 1 as const,
-      id: ulid(),
-      rev: 1,
-      titulo: titulo || 'Pencil test',
-      fps: Math.min(24, Math.max(6, fps)),
-      bucle: true,
-      frames,
-      miniatura: uploaded[0]?.miniDataUrl || '',
-    })
-    addSecuencia(s)
-    const token = getToken()
-    if (token) saveSecuencia(token, s).catch(() => undefined)
-    setFiles([])
-    setCurrentSecId(s.id)
+    setUploading(true)
+    setError(null)
+    try {
+      const uploaded = await uploadFrames(files)
+      const frames = uploaded.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
+      const s = withUpdatedAt({
+        schema: 1 as const,
+        id: ulid(),
+        rev: 1,
+        titulo: titulo || 'Animación',
+        fps: Math.min(24, Math.max(6, fps)),
+        bucle: true,
+        frames,
+        miniatura: uploaded[0]?.miniDataUrl || '',
+      })
+      addSecuencia(s)
+      const token = getToken()
+      if (token) saveSecuencia(token, s).catch(() => undefined)
+      setFiles([])
+      setCurrentSecId(s.id)
+    } catch (e: any) {
+      console.error('Upload frames failed', e)
+      setError(e?.message || 'No se han podido subir los fotogramas')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -121,6 +148,7 @@ export default function PencilTest() {
             accept="image/*"
             multiple
             className="hidden"
+            disabled={uploading}
             onChange={(e) => setFiles(Array.from(e.target.files || []))}
           />
           <PlusIcon className="w-5 h-5" />
@@ -132,21 +160,6 @@ export default function PencilTest() {
           placeholder={es.pencil.titlePlaceholder}
           className="field grow min-w-[10rem]"
         />
-        <input
-          type="number"
-          value={fps}
-          min={6}
-          max={24}
-          onChange={(e) => setFps(Number(e.target.value))}
-          aria-label={es.pencil.fps}
-          className="field w-24"
-        />
-        <button onClick={createFromFiles} className="btn btn-primary">
-          {es.pencil.create}
-        </button>
-        <button onClick={() => setPlaying((v) => !v)} className="btn btn-soft">
-          {playing ? es.pencil.pause : es.pencil.play}
-        </button>
         <label className="flex items-center gap-2 text-sm">
           <span className="whitespace-nowrap">{es.pencil.fps}</span>
           <input
@@ -159,9 +172,27 @@ export default function PencilTest() {
             className="field w-24"
           />
         </label>
+        <button onClick={createFromFiles} disabled={uploading || files.length === 0} className="btn btn-primary">
+          {uploading ? 'Subiendo...' : es.pencil.create}
+        </button>
+        <button onClick={() => setPlaying((v) => !v)} disabled={!sec || urls.length === 0} className="btn btn-soft">
+          {playing ? es.pencil.pause : es.pencil.play}
+        </button>
       </div>
+      {uploading && <p className="text-sm text-[var(--muted)]">Subiendo fotogramas...</p>}
+      {error && <p className="text-sm text-[#ff9db1]">{error}</p>}
 
-      {sec && urls.length > 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center text-center gap-3 py-10">
+          <img
+            src="./icon.png"
+            alt=""
+            aria-hidden="true"
+            className="w-20 h-20 sticker-shadow sticker-float hop object-contain"
+          />
+          <p className="text-sm text-[var(--muted)]">Revisando animaciones...</p>
+        </div>
+      ) : sec && urls.length > 0 ? (
         <div className="flex flex-col items-center gap-3">
           <div className="relative w-full max-w-3xl aspect-[4/3] bg-black border-2 border-[var(--border)] rounded-2xl overflow-hidden shadow-lg">
             {urls[index % urls.length] && (
@@ -205,6 +236,39 @@ export default function PencilTest() {
                 </div>
               ))}
           </div>
+          {secuencias.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <select
+                value={currentSecId || sec?.id || ''}
+                onChange={(e) => {
+                  setCurrentSecId(e.target.value)
+                  setPlaying(false)
+                  setIndex(0)
+                }}
+                className="field"
+              >
+                <option value="">Seleccionar animación...</option>
+                {secuencias.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.titulo}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  const id = currentSecId || sec?.id
+                  if (id) {
+                    setCurrentSecId(id)
+                    setPlaying(true)
+                  }
+                }}
+                disabled={!currentSecId && !sec}
+                className="btn btn-soft"
+              >
+                Reproducir
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center text-center gap-3 py-10">
@@ -212,6 +276,7 @@ export default function PencilTest() {
           <p className="text-sm text-[var(--muted)] max-w-xs">{es.pencil.empty}</p>
         </div>
       )}
+      <CuteComment />
     </div>
   )
 }

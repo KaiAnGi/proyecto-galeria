@@ -8,6 +8,7 @@ import { getToken } from '../features/auth/googleAuth'
 import { es } from '../i18n/es'
 import { MoonSticker } from '../components/Stickers'
 import { PlusIcon } from '../components/Icons'
+import CuteComment from '../components/CuteComment'
 
 type Estado = Entrega['estado']
 
@@ -218,6 +219,7 @@ export default function Entregas() {
           })}
         </section>
       )}
+      <CuteComment />
     </div>
   )
 }
