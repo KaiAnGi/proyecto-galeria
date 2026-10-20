@@ -112,9 +112,6 @@ export default function PencilTest() {
           <Link to="/" className="btn btn-soft">
             ← Volver
           </Link>
-          <Link to="/galeria" className="btn btn-soft">
-            {es.pencil.back}
-          </Link>
         </div>
       </header>
 

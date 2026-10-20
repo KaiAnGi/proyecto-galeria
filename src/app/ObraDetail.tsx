@@ -127,9 +127,6 @@ export default function ObraDetail() {
             <Link to="/" className="btn btn-soft">
               ← Volver
             </Link>
-            <Link to="/galeria" className="btn btn-soft">
-              {es.obra.back.replace('← ', '')}
-            </Link>
           </div>
           <input
             aria-label={es.obra.title}

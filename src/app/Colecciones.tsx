@@ -48,9 +48,6 @@ export default function Colecciones() {
           <Link to="/" className="btn btn-soft">
             ← Volver
           </Link>
-          <Link to="/galeria" className="btn btn-soft">
-            {es.collections.back}
-          </Link>
         </div>
       </header>
 
