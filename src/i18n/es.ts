@@ -127,6 +127,9 @@
     empty: 'Aún no hay colecciones. Crea la primera con el recuadro de arriba.',
     notFound: 'No se ha encontrado la colección.',
     emptyWorks: 'Esta colección aún no tiene obras.',
+    works: (n: number) => (n === 1 ? '1 obra' : `${n} obras`),
+    addTo: 'Añadir dibujo',
+    removeWork: 'Quitar',
     notebook: 'Cuaderno',
     untitled: 'Sin título',
     tipo: {

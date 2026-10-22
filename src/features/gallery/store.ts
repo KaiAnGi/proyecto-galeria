@@ -48,6 +48,7 @@ export interface Coleccion {
   tipo: 'general' | 'cuaderno' | 'clase'
   color?: string
   orden: number
+  driveFolderId?: string
 }
 
 export interface Entrega {

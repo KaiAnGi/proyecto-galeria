@@ -80,7 +80,7 @@ describe('initDriveStructure', () => {
     vi.stubGlobal('fetch', fetch)
 
     expect(await initDriveStructure('token')).toBe('existing-root')
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch.mock.calls.length).toBe(1)
   })
 
   it('creates the root and every subfolder on a fresh Drive', async () => {

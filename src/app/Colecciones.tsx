@@ -36,7 +36,6 @@ export default function Colecciones() {
     if (token) saveColeccion(token, c).catch(() => undefined)
     setName('')
   }
-
   return (
     <div className="min-h-full p-4 sm:p-6 flex flex-col gap-6">
       <header className="flex items-center justify-between gap-3">

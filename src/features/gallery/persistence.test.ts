@@ -22,6 +22,12 @@ vi.mock('../drive/driveImageClient', () => ({
   downloadJson: vi.fn(async () => ({})),
   trashFile: vi.fn(async () => undefined),
   findFileByName: vi.fn(async () => null),
+  DRIVE_API: 'https://www.googleapis.com/drive/v3',
+}))
+
+vi.mock('../drive/collectionFolders', () => ({
+  ensureColeccionFolder: vi.fn(async () => 'col-folder-1'),
+  syncObraIntoColeccionFolder: vi.fn(async () => undefined),
 }))
 
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
@@ -109,7 +115,8 @@ describe('saveColeccion', () => {
   it('upserts coleccion-<id>.json inside the colecciones folder', async () => {
     await saveColeccion('token', coleccion)
 
-    const [, , name, parents, appProps] = (upsertJson as any).mock.calls[0]
+    const [, data, name, parents, appProps] = (upsertJson as any).mock.calls[0]
+    expect(data).toMatchObject({ id: 'col-1', nombre: 'Verano', driveFolderId: 'col-folder-1' })
     expect(name).toBe('coleccion-col-1.json')
     expect(parents).toEqual(['colecciones'])
     expect(appProps).toMatchObject({ kind: 'coleccion', id: 'col-1' })

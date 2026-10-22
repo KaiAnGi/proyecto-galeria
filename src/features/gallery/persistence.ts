@@ -1,5 +1,6 @@
 import { getFolderIds } from './upload'
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
+import { ensureColeccionFolder, syncObraIntoColeccionFolder } from '../drive/collectionFolders'
 import type { Obra, Coleccion, Entrega } from './store'
 import type { Secuencia } from './secuencias'
 import { useGalleryStore } from './store'
@@ -11,10 +12,24 @@ export async function saveObra(token: string, obra: Obra): Promise<void> {
 
 export async function saveColeccion(token: string, coleccion: Coleccion): Promise<void> {
   const folders = await getFolderIds(token)
-  await upsertJson(token, coleccion, `coleccion-${coleccion.id}.json`, [folders.coleccionesId], {
+  const driveFolderId = coleccion.driveFolderId || (await ensureColeccionFolder(token, coleccion))
+  const conFolder = driveFolderId === coleccion.driveFolderId ? coleccion : { ...coleccion, driveFolderId }
+  await upsertJson(token, conFolder, `coleccion-${coleccion.id}.json`, [folders.coleccionesId], {
     kind: 'coleccion',
     id: coleccion.id,
   })
+  if (driveFolderId !== coleccion.driveFolderId) {
+    useGalleryStore.getState().updateColeccion(coleccion.id, { driveFolderId })
+  }
+}
+
+export async function syncColeccionObra(
+  token: string,
+  coleccion: Coleccion,
+  obra: Obra,
+  inside: boolean,
+): Promise<void> {
+  await syncObraIntoColeccionFolder(token, coleccion, obra, inside)
 }
 
 export async function saveSecuencia(token: string, secuencia: Secuencia): Promise<void> {

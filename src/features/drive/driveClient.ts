@@ -24,7 +24,12 @@ export async function findRootFolder(token: string): Promise<DriveFile | null> {
   return files[0] || null
 }
 
-export async function createFolder(token: string, name: string, parents?: string[], appProps?: Record<string, string>): Promise<DriveFile> {
+export async function createFolder(
+  token: string,
+  name: string,
+  parents?: string[],
+  appProps?: Record<string, string>,
+): Promise<DriveFile> {
   const body = {
     name,
     mimeType: 'application/vnd.google-apps.folder',
@@ -44,21 +49,47 @@ export async function createFolder(token: string, name: string, parents?: string
   return res.json()
 }
 
+export async function findOrCreateAppRootFolder(token: string): Promise<DriveFile> {
+  const existing = await findRootFolder(token)
+  if (existing) return existing
+  const rootId = ulid()
+  const createdRoot = await createFolder(token, 'Kuromi likes your drawings', undefined, { kind: 'root', id: rootId })
+  return createdRoot
+}
+
+export async function findFolderByName(token: string, name: string, parentId: string): Promise<DriveFile | null> {
+  const q = encodeURIComponent(`name='${name}' and trashed=false and '${parentId}' in parents`)
+  const url = DRIVE_API + '/files?q=' + q + '&spaces=drive&fields=files(id,name,mimeType,appProperties,parents)'
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } })
+  if (!res.ok) throw new Error('Drive API error: ' + res.status)
+  const data = await res.json()
+  const files = data.files || []
+  return files[0] || null
+}
+
+export async function ensureFolder(token: string, name: string, parentId: string, kind: string): Promise<DriveFile> {
+  const existing = await findFolderByName(token, name, parentId)
+  if (existing) return existing
+  return createFolder(token, name, [parentId], { kind, rootId: parentId })
+}
+
 export async function initDriveStructure(token: string): Promise<string> {
   const root = await findRootFolder(token)
-  if (root) return root.id
-  const rootId = ulid()
-  const createdRoot = await createFolder(token, 'Mis obras', undefined, { kind: 'root', id: rootId })
-  const datos = await createFolder(token, '_datos', [createdRoot.id], { kind: 'datos', rootId })
-  await createFolder(token, 'obras', [datos.id], { kind: 'obras', rootId })
-  await createFolder(token, 'colecciones', [datos.id], { kind: 'colecciones', rootId })
-  await createFolder(token, 'secuencias', [datos.id], { kind: 'secuencias', rootId })
-  await createFolder(token, 'entregas', [datos.id], { kind: 'entregas', rootId })
-  const archivos = await createFolder(token, 'archivos', [createdRoot.id], { kind: 'archivos', rootId })
-  await createFolder(token, 'originales', [archivos.id], { kind: 'originales', rootId })
-  await createFolder(token, 'galeria', [archivos.id], { kind: 'galeria', rootId })
-  await createFolder(token, 'miniaturas', [archivos.id], { kind: 'miniaturas', rootId })
-  return createdRoot.id
+  if (!root) {
+    const rootId = ulid()
+    const createdRoot = await createFolder(token, 'Mis obras', undefined, { kind: 'root', id: rootId })
+    const datos = await createFolder(token, '_datos', [createdRoot.id], { kind: 'datos', rootId })
+    await createFolder(token, 'obras', [datos.id], { kind: 'obras', rootId })
+    await createFolder(token, 'colecciones', [datos.id], { kind: 'colecciones', rootId })
+    await createFolder(token, 'secuencias', [datos.id], { kind: 'secuencias', rootId })
+    await createFolder(token, 'entregas', [datos.id], { kind: 'entregas', rootId })
+    const archivos = await createFolder(token, 'archivos', [createdRoot.id], { kind: 'archivos', rootId })
+    await createFolder(token, 'originales', [archivos.id], { kind: 'originales', rootId })
+    await createFolder(token, 'galeria', [archivos.id], { kind: 'galeria', rootId })
+    await createFolder(token, 'miniaturas', [archivos.id], { kind: 'miniaturas', rootId })
+    return createdRoot.id
+  }
+  return root.id
 }
 
 export async function saveTestFile(token: string): Promise<any> {
