@@ -1,118 +1,91 @@
 import { useState, useEffect } from 'react'
 import { es } from '../i18n/es'
-import { initGoogleAuth, getToken, signInWithGoogle, hasValidToken } from '../features/auth/googleAuth'
+import { ensureToken, preloadGoogleAuth, signInWithGoogle } from '../features/auth/googleAuth'
+import { useAuth } from '../features/auth/useAuth'
 import { initDriveStructure } from '../features/drive/driveClient'
+import { ensureLoaded } from '../features/gallery/persistence'
 import { exportAllToZip } from '../lib/export/zipExport'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { useGalleryStore } from '../features/gallery/store'
 import { SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
 
 export default function Home() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'connected' | 'error'>('idle')
+  const auth = useAuth()
+  const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rootId, setRootId] = useState<string | null>(() => sessionStorage.getItem('gallery-root-id'))
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    const token = getToken()
-    if (!token) {
-      return
-    }
-    if (hasValidToken()) {
-      let cancelled = false
-      const t = setTimeout(() => {
-        setStatus('connected')
-        initDriveStructure(token)
-          .then((root) => {
-            if (cancelled) return
-            setRootId(root)
-            sessionStorage.setItem('gallery-root-id', root)
-          })
-          .catch((e) => {
-            if (cancelled) return
-            console.error('Restore drive structure failed', e)
-          })
-      }, 0)
-      return () => {
-        cancelled = true
-        clearTimeout(t)
-      }
-    }
-    // try to refresh
+    if (!auth.token) return
     let cancelled = false
-    const t = setTimeout(() => {
-      setStatus('loading')
-      initGoogleAuth()
-        .then(() => signInWithGoogle())
-        .then(() => {
-          if (cancelled) return
-          const t2 = getToken()
-          if (!t2 || !hasValidToken()) throw new Error('No se obtuvo token')
-          return initDriveStructure(t2)
-        })
-        .then((root) => {
-          if (cancelled) return
-          if (typeof root === 'string') {
-            setRootId(root)
-            sessionStorage.setItem('gallery-root-id', root)
-          }
-          setStatus('connected')
-        })
-        .catch((e) => {
-          if (cancelled) return
-          console.error('Refresh failed', e)
-          setStatus('idle')
-        })
-    }, 0)
+    initDriveStructure(auth.token)
+      .then((root) => {
+        if (cancelled) return
+        setRootId(root)
+        sessionStorage.setItem('gallery-root-id', root)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        console.error('Drive structure setup failed', e)
+      })
     return () => {
       cancelled = true
-      clearTimeout(t)
     }
-  }, [])
+  }, [auth.token])
 
   async function handleConnect() {
-    setStatus('loading')
+    setConnecting(true)
     setError(null)
     try {
-      await initGoogleAuth()
-      await signInWithGoogle()
-      const token = getToken()
-      if (!hasValidToken() || !token) {
-        throw new Error('No se obtuvo token')
-      }
+      await preloadGoogleAuth()
+      const token = await signInWithGoogle()
       const root = await initDriveStructure(token)
       setRootId(root)
       sessionStorage.setItem('gallery-root-id', root)
-      setStatus('connected')
-    } catch (e: any) {
+    } catch (e) {
       console.error('Connect failed', e)
       setError(friendlyError(e, es.app.connectError))
-      setStatus('error')
+    } finally {
+      setConnecting(false)
     }
   }
 
   async function handleExport() {
     setExporting(true)
+    setError(null)
     try {
+      const token = await ensureToken()
+      await ensureLoaded(token)
       const s = useGalleryStore.getState()
-      const blob = await exportAllToZip({
-        obras: s.obras,
-        colecciones: s.colecciones,
-        secuencias: s.secuencias,
-        entregas: s.entregas,
-      })
+      const blob = await exportAllToZip(
+        {
+          obras: s.obras,
+          colecciones: s.colecciones,
+          secuencias: s.secuencias,
+          entregas: s.entregas,
+        },
+        token,
+      )
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = 'mi-galeria.zip'
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch {
       alert(es.app.exportError)
     } finally {
       setExporting(false)
     }
   }
+
+  const busy = connecting || auth.status === 'connecting'
+  const showMenu = auth.hasConnectedBefore || rootId !== null
+  const showConnect = !showMenu
+  const sessionError = !auth.token && auth.error && auth.status === 'error' ? friendlyError(new Error(auth.error), es.errors.session) : null
 
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-6 gap-7">
@@ -122,7 +95,7 @@ export default function Home() {
             src="./icon.png"
             alt=""
             aria-hidden="true"
-            className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow object-contain ${status === 'loading' ? 'hop' : 'sticker-float'}`}
+            className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow object-contain ${busy ? 'hop' : 'sticker-float'}`}
           />
           <SparkleSticker className="absolute -top-2 -right-7 w-7 twinkle" />
           <HeartSticker className="absolute -bottom-2 -left-6 w-6 sticker-float-slow" />
@@ -134,13 +107,13 @@ export default function Home() {
         <p className="text-[var(--muted)] max-w-sm">{es.app.tagline}</p>
       </div>
 
-      {status !== 'connected' && (
+      {showConnect && (
         <div className="flex flex-col items-center gap-4 fade-up" style={{ animationDelay: '0.12s' }}>
-          <button onClick={handleConnect} disabled={status === 'loading'} className="btn btn-primary">
-            {status === 'loading' ? es.app.connecting : es.app.connectDrive}
+          <button onClick={handleConnect} disabled={busy} className="btn btn-primary">
+            {busy ? es.app.connecting : es.app.connectDrive}
           </button>
 
-          {status === 'error' && error && (
+          {error && (
             <div className="panel max-w-md p-5 text-center">
               <p className="font-medium text-[var(--accent-soft)]">{error}</p>
               <p className="mt-2 text-sm text-[var(--muted)]">{es.app.adblockHelp}</p>
@@ -152,14 +125,29 @@ export default function Home() {
         </div>
       )}
 
-      {status === 'connected' && (
-        <div
-          className="w-full max-w-xl flex flex-col items-center gap-4 fade-up"
-          style={{ animationDelay: '0.12s' }}
-        >
-          <p className="chip">
-            {es.app.rootFolderId}: {rootId}
-          </p>
+      {showMenu && (
+        <div className="w-full max-w-xl flex flex-col items-center gap-4 fade-up" style={{ animationDelay: '0.12s' }}>
+          {rootId && (
+            <p className="chip">
+              {es.app.rootFolderId}: {rootId}
+            </p>
+          )}
+
+          {sessionError && !error && (
+            <div className="panel w-full p-4 text-center flex flex-col items-center gap-3">
+              <p className="text-sm text-[var(--muted)]">{es.app.tapToReconnect}</p>
+              <button type="button" onClick={handleConnect} disabled={busy} className="btn btn-soft">
+                {es.app.connectDrive}
+              </button>
+            </div>
+          )}
+
+          {error && (
+            <div className="panel w-full p-4 text-center">
+              <p className="font-medium text-[var(--accent-soft)]">{error}</p>
+              <p className="mt-2 text-xs text-[var(--muted)]">{es.app.adblockHelp}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
             <a href="#/galeria" className="menu-card">
@@ -205,8 +193,8 @@ export default function Home() {
                 </svg>
               </span>
               <span className="min-w-0 text-left">
-                <span className="block font-semibold">{es.app.goAnimations || 'Animaciones'}</span>
-                <span className="block text-xs text-[var(--muted)]">{es.app.subAnimations || es.app.subPencil}</span>
+                <span className="block font-semibold">{es.app.goAnimations}</span>
+                <span className="block text-xs text-[var(--muted)]">{es.app.subAnimations}</span>
               </span>
             </a>
           </div>

@@ -84,37 +84,83 @@ export interface LoadedData {
   entregas: Entrega[]
 }
 
+function isAuthError(e: unknown): boolean {
+  return e instanceof Error && /(?:401|403)/.test(e.message)
+}
+
+async function loadEntities<T>(
+  token: string,
+  files: Array<{ id: string }>,
+): Promise<T[]> {
+  const results = await Promise.allSettled(files.map((file) => downloadJson<T>(token, file.id)))
+  const items: T[] = []
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      items.push(result.value)
+      continue
+    }
+    if (isAuthError(result.reason)) throw result.reason
+  }
+  return items
+}
+
 export async function loadAllData(token: string): Promise<LoadedData> {
   const folders = await getFolderIds(token)
-  const [obraFiles, coleccionFiles, secuenciaFiles, entregaFiles] = await Promise.all([
+  const folderResults = await Promise.allSettled([
     listJsonFiles(token, folders.obrasId),
     listJsonFiles(token, folders.coleccionesId),
     listJsonFiles(token, folders.secuenciasId),
     listJsonFiles(token, folders.entregasId),
   ])
+
+  for (const result of folderResults) {
+    if (result.status === 'rejected' && isAuthError(result.reason)) throw result.reason
+  }
+
+  const rejected = folderResults.filter((result) => result.status === 'rejected')
+  if (rejected.length > 0) {
+    console.warn(`${rejected.length} Drive folder(s) failed to load`, rejected[0].reason)
+  }
+  if (rejected.length === folderResults.length && rejected[0]?.status === 'rejected') {
+    throw rejected[0].reason
+  }
+
+  const files = folderResults.map((result) => (result.status === 'fulfilled' ? result.value : []))
   const [obras, colecciones, secuencias, entregas] = await Promise.all([
-    Promise.all(obraFiles.map((f) => downloadJson<Obra>(token, f.id))),
-    Promise.all(coleccionFiles.map((f) => downloadJson<Coleccion>(token, f.id))),
-    Promise.all(secuenciaFiles.map((f) => downloadJson<Secuencia>(token, f.id))),
-    Promise.all(entregaFiles.map((f) => downloadJson<Entrega>(token, f.id))),
+    loadEntities<Obra>(token, files[0]),
+    loadEntities<Coleccion>(token, files[1]),
+    loadEntities<Secuencia>(token, files[2]),
+    loadEntities<Entrega>(token, files[3]),
   ])
+
   return { obras, colecciones, secuencias, entregas }
 }
 
 let loadedOnce = false
+let loadPromise: Promise<void> | null = null
+
+export function isGalleryLoaded(): boolean {
+  return loadedOnce
+}
 
 export function resetLoadedOnce(): void {
   loadedOnce = false
+  loadPromise = null
 }
 
 export async function ensureLoaded(token: string): Promise<void> {
   if (loadedOnce) return
-  loadedOnce = true
-  try {
+  if (loadPromise) return loadPromise
+
+  loadPromise = (async () => {
     const data = await loadAllData(token)
     useGalleryStore.getState().hydrate(data)
-  } catch (e) {
-    loadedOnce = false
-    throw e
+    loadedOnce = true
+  })()
+
+  try {
+    await loadPromise
+  } finally {
+    loadPromise = null
   }
 }

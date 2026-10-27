@@ -72,8 +72,6 @@ interface GalleryState {
   addObra: (obra: Obra) => void
   updateObra: (id: string, patch: Partial<Obra>) => void
   removeObraSoft: (id: string) => void
-  clearTrashUndo: (id: string) => void
-  trashedById: Record<string, Obra | null>
   addColeccion: (c: Coleccion) => void
   updateColeccion: (id: string, patch: Partial<Coleccion>) => void
   removeColeccion: (id: string) => void
@@ -98,22 +96,7 @@ export const useGalleryStore = create<GalleryState>((set) => ({
     set((state) => ({
       obras: state.obras.map((o) => (o.id === id ? { ...o, ...patch, updatedAt: new Date().toISOString() } : o)),
     })),
-  removeObraSoft: (id) =>
-    set((state) => {
-      const obra = state.obras.find((o) => o.id === id)
-      if (!obra) return state
-      return {
-        obras: state.obras.filter((o) => o.id !== id),
-        trashedById: { ...state.trashedById, [id]: obra },
-      }
-    }),
-  clearTrashUndo: (id) =>
-    set((state) => {
-      const next = { ...state.trashedById }
-      delete next[id]
-      return { trashedById: next }
-    }),
-  trashedById: {},
+  removeObraSoft: (id) => set((state) => ({ obras: state.obras.filter((o) => o.id !== id) })),
   addColeccion: (c) => set((state) => ({ colecciones: [c, ...state.colecciones] })),
   updateColeccion: (id, patch) =>
     set((state) => ({

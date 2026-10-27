@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useGalleryStore } from '../features/gallery/store'
 import { Link } from 'react-router-dom'
 import { ulid } from 'ulidx'
-import { saveColeccion, ensureLoaded } from '../features/gallery/persistence'
-import { getToken } from '../features/auth/googleAuth'
+import { saveColeccion } from '../features/gallery/persistence'
+import { useGalleryData } from '../features/gallery/useGalleryData'
+import { enqueueSave } from '../features/gallery/saveQueue'
 import { es } from '../i18n/es'
 import { StarSticker, HeartSticker } from '../components/Stickers'
 import { PlusIcon, BinderIcon } from '../components/Icons'
@@ -11,14 +12,9 @@ import { PlusIcon, BinderIcon } from '../components/Icons'
 export default function Colecciones() {
   const colecciones = useGalleryStore((s) => s.colecciones)
   const addColeccion = useGalleryStore((s) => s.addColeccion)
+  const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const [name, setName] = useState('')
   const [tipo, setTipo] = useState<'general' | 'cuaderno' | 'clase'>('general')
-
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
-    ensureLoaded(token).catch(() => undefined)
-  }, [])
 
   function crear() {
     if (!name.trim()) return
@@ -32,8 +28,7 @@ export default function Colecciones() {
       orden: colecciones.length,
     }
     addColeccion(c)
-    const token = getToken()
-    if (token) saveColeccion(token, c).catch(() => undefined)
+    void enqueueSave((token) => saveColeccion(token, c)).catch(() => undefined)
     setName('')
   }
   return (
@@ -67,11 +62,28 @@ export default function Colecciones() {
           <option value="cuaderno">{es.collections.tipo.cuaderno}</option>
           <option value="clase">{es.collections.tipo.clase}</option>
         </select>
-        <button onClick={crear} type="button" className="btn btn-primary">
+        <button onClick={crear} type="button" disabled={state !== 'ready'} className="btn btn-primary">
           <PlusIcon className="w-5 h-5" />
           {es.collections.create}
         </button>
       </div>
+
+      {state === 'loading' && <p className="text-sm text-[var(--muted)]">{es.app.loading}</p>}
+
+      {state === 'error' && (
+        <div className="panel p-4 text-center flex flex-col items-center gap-3">
+          <p className="text-[var(--accent-soft)]">{loadError ?? es.gallery.loadError}</p>
+          <button type="button" onClick={retry} className="btn btn-soft">
+            {es.gallery.retryLoad}
+          </button>
+        </div>
+      )}
+
+      {state === 'idle' && hasConnectedBefore && (
+        <div className="panel p-4 text-center">
+          <p className="text-sm text-[var(--muted)]">{es.gallery.reconnectPrompt}</p>
+        </div>
+      )}
 
       {colecciones.length === 0 ? (
         <div className="flex flex-col items-center text-center gap-3 py-10 relative">

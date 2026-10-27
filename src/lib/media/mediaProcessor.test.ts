@@ -44,7 +44,15 @@ describe('getVideoThumbnail', () => {
       getContext: () => ctx,
       toDataURL: () => 'data:image/jpeg;base64,thumb',
     }
-    const video = { muted: false, playsInline: false, preload: '', src: '', load: vi.fn() }
+    const video = {
+      muted: false,
+      playsInline: false,
+      preload: '',
+      src: '',
+      load: vi.fn(),
+      pause: vi.fn(),
+      removeAttribute: vi.fn(),
+    }
     const fakeVideo = video as unknown as HTMLVideoElement
     let onSeek: (() => void) | null = null
     Object.defineProperty(fakeVideo, 'onseeked', {

@@ -146,6 +146,26 @@ describe('loadAllData', () => {
     expect(data.entregas).toEqual([entrega])
     expect(listJsonFiles).toHaveBeenCalledTimes(4)
   })
+
+  it('keeps the folders that load when another folder falls', async () => {
+    ;(listJsonFiles as any).mockImplementation(async (_token: string, folder: string) => {
+      if (folder === 'obras') throw new Error('Drive API error: 500')
+      if (folder === 'colecciones') return [{ id: 'f2', name: 'coleccion-col-1.json' }]
+      return []
+    })
+    ;(downloadJson as any).mockResolvedValue(coleccion)
+
+    const data = await loadAllData('token')
+
+    expect(data.obras).toEqual([])
+    expect(data.colecciones).toEqual([coleccion])
+  })
+
+  it('rejects when Drive reports an expired session', async () => {
+    ;(listJsonFiles as any).mockRejectedValue(new Error('Drive API error: 401'))
+
+    await expect(loadAllData('token')).rejects.toThrow('401')
+  })
 })
 
 describe('saveEntrega', () => {

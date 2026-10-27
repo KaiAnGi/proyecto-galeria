@@ -6,7 +6,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 
 ### Fase 0 — Esqueleto y pruebas de riesgo (hecha)
 - PWA instalable (Vite + React + TypeScript, vite-plugin-pwa), desplegada en GitHub Pages.
-- Login con Google (scope `drive.file`), token solo en memoria.
+- Login con Google (scope `drive.file`), token en memoria y `sessionStorage` con caducidad. Sin ventana al arrancar: el primer toque renueva; nunca se guarda en `localStorage`.
 - Estructura de carpetas en Drive y archivo de prueba de lectura/escritura.
 - iOS por defecto en modo navegador (`display: "browser"`); `VITE_IOS_STANDALONE`
   permite activar pantalla completa tras probarla en un dispositivo real.
@@ -15,8 +15,8 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Subida desde archivo, cámara, arrastrar y pegar.
 - Cuadrícula de obras y visor con zoom propio (Pointer Events).
 - Edición de título y notas (se guardan en Drive).
-- Borrado suave con "Deshacer"; al expirar, los archivos se mueven a la papelera de Drive.
-- Imagen de galería ≤2400 px, miniatura y corrección de EXIF/HEIC.
+- Borrado suave con "Deshacer" durante 7 s y una barra común para todos los borrados pendientes; al expirar, los archivos se mueven a la papelera de Drive.
+- Imagen de galería ≤2400 px, miniatura y corrección de orientación EXIF al decodificar (`createImageBitmap`), con conversión de HEIC.
 
 ### Fase 2 — Organización (hecha)
 - Colecciones y cuadernos, con vista de detalle y orden de páginas.
@@ -40,8 +40,11 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
   `_datos/entregas/entrega-<id>.json`.
 
 ### Fase 4 — Pulido y extras (parcial)
-- Carga de obras/colecciones/secuencias/entregas desde Drive al iniciar sesión.
-- Exportación a ZIP de los datos (obras, colecciones, secuencias y entregas).
+- Sesión que sobrevive recargas con `sessionStorage`; al cerrar la pestaña el menú sigue disponible y el primer toque renueva con Google sin volver a la bienvenida.
+- Carga de obras/colecciones/secuencias/entregas desde Drive al iniciar sesión, tolerante a fallos parciales por carpeta.
+- Guardados en cola con aviso de "Guardando…", error visible y botón para reintentar; los cambios se envían en orden.
+- Exportación a ZIP real: datos, imágenes originales, galería, miniaturas, versiones y fotogramas.
+- Iconos PWA generados desde `public/icon.png` (`npm run generate-pwa-assets`), con icono normal, `maskable` y `apple-touch-icon`.
 - Altura dinámica (`100dvh`) y área segura (`env(safe-area-inset-*)`) para iPad.
 - Rediseño visual completo (SPEC §10): tipografías autoalojadas DynaPuff (títulos)
   y Fredoka (texto) bajo licencia SIL OFL, fondo con degradados y damero suave,
@@ -51,18 +54,16 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
   cortas que respetan `prefers-reduced-motion`. Favicon propio (calavera con lazo).
 - Toda la tipografía de interfaz vive en `src/i18n/es.ts`; se extrajeron los textos
   que estaban sueltos en Colecciones, ColeccionDetail y Pencil test.
+- Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (34 pruebas: lógica de datos/Drive, media y filtros).
-- E2E con Playwright: `npm run test:e2e`, cuatro proyectos:
-  `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con
-  user agent de Ecosia). 46 pruebas (6 saltadas según el motor): OAuth simulado,
-  subida real de GIF/vídeo con un Drive en memoria, entregas con recarga,
-  búsqueda/filtros y edición de la ficha, controles táctiles ≥44 px,
-  área segura/dvh y soporte de MP4 H.264.
+- Unitarias con Vitest: `npm run test` (68 pruebas: autenticación/sesión, datos/Drive, carga parcial, colas de guardado y borrado, ZIP, media y filtros).
+- Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
+- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
 
 ## Pendiente
-- Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`).
+- Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popups, EXIF, descarga del ZIP e instalación PWA.
+- Actualizar la suite E2E a la nueva sesión y a las colas de guardado/borrado.
 - Fase 4 restante: estadísticas/racha, paleta por obra, moodboard y easter egg.
 - Pruebas unitarias de la lógica de imagen (requieren simular `heic2any` y canvas).
 

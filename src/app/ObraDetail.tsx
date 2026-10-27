@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import ZoomableImage from '../features/gallery/ZoomableImage'
@@ -6,11 +6,12 @@ import VideoPlayer from '../features/gallery/VideoPlayer'
 import CompareSlider from '../features/gallery/CompareSlider'
 import Versiones from '../features/gallery/Versiones'
 import { useDriveImage } from '../features/gallery/useDriveImage'
+import { useGalleryData } from '../features/gallery/useGalleryData'
 import { comparePair } from '../features/gallery/versions'
 import { saveObra } from '../features/gallery/persistence'
+import { enqueueSave } from '../features/gallery/saveQueue'
+import { queueObraTrash } from '../features/gallery/trashQueue'
 import { parseList } from '../features/gallery/filters'
-import { getToken } from '../features/auth/googleAuth'
-import { ensureLoaded } from '../features/gallery/persistence'
 import type { Obra } from '../features/gallery/store'
 import { es } from '../i18n/es'
 import CuteComment from '../components/CuteComment'
@@ -18,9 +19,9 @@ import CuteComment from '../components/CuteComment'
 export default function ObraDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const obra = useGalleryStore((s) => (id ? s.obras.find((o) => o.id === id) : undefined))
   const updateObra = useGalleryStore((s) => s.updateObra)
-  const removeObraSoft = useGalleryStore((s) => s.removeObraSoft)
   const [titleDraft, setTitleDraft] = useState(obra?.titulo ?? '')
   const [notesDraft, setNotesDraft] = useState(obra?.notas ?? '')
   const [tecnicasDraft, setTecnicasDraft] = useState(obra?.tecnicas.join(', ') ?? '')
@@ -28,12 +29,6 @@ export default function ObraDetail() {
   const [lastObraId, setLastObraId] = useState<string | undefined>(obra?.id)
   const [selectedArchivoId, setSelectedArchivoId] = useState<string | null>(null)
   const [compareOn, setCompareOn] = useState(false)
-
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
-    ensureLoaded(token).catch(() => undefined)
-  }, [])
 
   const selectedArchivo = obra?.archivos.find((a) => a.id === selectedArchivoId) ?? obra?.archivos[0]
   const isVideo = selectedArchivo?.tipo === 'video'
@@ -65,8 +60,21 @@ export default function ObraDetail() {
 
   if (!obra) {
     return (
-      <div className="min-h-full p-6 flex flex-col items-center justify-center gap-4">
-        <p className="text-[var(--muted)]">{es.obra.notFound}</p>
+      <div className="min-h-full p-6 flex flex-col items-center justify-center gap-4 text-center">
+        {state === 'loading' ? (
+          <p className="text-[var(--muted)]">{es.app.loading}</p>
+        ) : state === 'error' ? (
+          <>
+            <p className="text-[var(--accent-soft)]">{loadError ?? es.gallery.loadError}</p>
+            <button type="button" onClick={retry} className="btn btn-soft">
+              {es.gallery.retryLoad}
+            </button>
+          </>
+        ) : state === 'idle' && hasConnectedBefore ? (
+          <p className="text-[var(--muted)]">{es.gallery.reconnectPrompt}</p>
+        ) : (
+          <p className="text-[var(--muted)]">{es.obra.notFound}</p>
+        )}
         <Link to="/galeria" className="btn btn-soft">
           {es.obra.back}
         </Link>
@@ -74,23 +82,25 @@ export default function ObraDetail() {
     )
   }
 
+  function savePatch(patch: Partial<Obra>) {
+    if (!id) return
+    updateObra(id, patch)
+    const latest = useGalleryStore.getState().obras.find((o) => o.id === id)
+    if (!latest) return
+    void enqueueSave((token) => saveObra(token, latest)).catch(() => undefined)
+  }
+
   function saveTitle() {
     if (!id || !obra) return
     if (titleDraft !== obra.titulo) {
-      const newTitle = titleDraft.trim() || es.obra.titlePlaceholder
-      updateObra(id, { titulo: newTitle })
-      const token = getToken()
-      if (token) saveObra(token, { ...obra, titulo: newTitle, updatedAt: new Date().toISOString() }).catch(() => undefined)
+      savePatch({ titulo: titleDraft.trim() || es.obra.titlePlaceholder })
     }
   }
 
   function saveNotes() {
     if (!id || !obra) return
     if (notesDraft !== (obra.notas ?? '')) {
-      const newNotes = notesDraft.trim() || undefined
-      updateObra(id, { notas: newNotes })
-      const token = getToken()
-      if (token) saveObra(token, { ...obra, notas: newNotes, updatedAt: new Date().toISOString() }).catch(() => undefined)
+      savePatch({ notas: notesDraft.trim() || undefined })
     }
   }
 
@@ -99,23 +109,18 @@ export default function ObraDetail() {
     const value = parseList(kind === 'tecnicas' ? tecnicasDraft : tagsDraft)
     const current = kind === 'tecnicas' ? obra.tecnicas : obra.tags
     if (value.length === current.length && value.every((v, i) => v === current[i])) return
-    const patch: Partial<Obra> = kind === 'tecnicas' ? { tecnicas: value } : { tags: value }
-    updateObra(id, patch)
-    const token = getToken()
-    if (token) saveObra(token, { ...obra, ...patch, updatedAt: new Date().toISOString() }).catch(() => undefined)
+    savePatch(kind === 'tecnicas' ? { tecnicas: value } : { tags: value })
   }
 
   function saveEstado(estado: Obra['estado']) {
     if (!id || !obra || estado === obra.estado) return
-    updateObra(id, { estado })
-    const token = getToken()
-    if (token) saveObra(token, { ...obra, estado, updatedAt: new Date().toISOString() }).catch(() => undefined)
+    savePatch({ estado })
   }
 
   function handleTrash() {
-    if (!id) return
+    if (!obra) return
     if (window.confirm(es.obra.deleteConfirm)) {
-      removeObraSoft(id)
+      queueObraTrash(obra)
       navigate('/galeria')
     }
   }

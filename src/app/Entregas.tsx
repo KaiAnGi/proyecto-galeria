@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ulid } from 'ulidx'
 import { useGalleryStore } from '../features/gallery/store'
 import type { Entrega } from '../features/gallery/store'
-import { saveEntrega, trashEntrega, ensureLoaded } from '../features/gallery/persistence'
-import { getToken } from '../features/auth/googleAuth'
+import { saveEntrega } from '../features/gallery/persistence'
+import { useGalleryData } from '../features/gallery/useGalleryData'
+import { enqueueSave } from '../features/gallery/saveQueue'
+import { queueEntregaTrash } from '../features/gallery/trashQueue'
 import { es } from '../i18n/es'
 import { MoonSticker } from '../components/Stickers'
 import { PlusIcon } from '../components/Icons'
@@ -34,21 +36,14 @@ export default function Entregas() {
   const obras = useGalleryStore((s) => s.obras)
   const addEntrega = useGalleryStore((s) => s.addEntrega)
   const updateEntrega = useGalleryStore((s) => s.updateEntrega)
-  const removeEntrega = useGalleryStore((s) => s.removeEntrega)
+  const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
 
   const [titulo, setTitulo] = useState('')
   const [asignatura, setAsignatura] = useState('')
   const [fechaLimite, setFechaLimite] = useState('')
 
-  useEffect(() => {
-    const token = getToken()
-    if (!token) return
-    ensureLoaded(token).catch(() => undefined)
-  }, [])
-
   function persist(entrega: Entrega) {
-    const token = getToken()
-    if (token) saveEntrega(token, entrega).catch(() => undefined)
+    void enqueueSave((token) => saveEntrega(token, entrega)).catch(() => undefined)
   }
 
   function crear() {
@@ -79,9 +74,7 @@ export default function Entregas() {
 
   function handleTrash(entrega: Entrega) {
     if (!confirm(es.entregas.deleteConfirm)) return
-    removeEntrega(entrega.id)
-    const token = getToken()
-    if (token) trashEntrega(token, entrega).catch(() => undefined)
+    queueEntregaTrash(entrega)
   }
 
   function linkObra(entrega: Entrega, obraId: string) {
@@ -123,11 +116,28 @@ export default function Entregas() {
           aria-label={es.entregas.due}
           className="field"
         />
-        <button onClick={crear} className="btn btn-accent">
+        <button onClick={crear} disabled={state !== 'ready'} className="btn btn-accent">
           <PlusIcon className="w-5 h-5" />
           {es.entregas.add}
         </button>
       </div>
+
+      {state === 'loading' && <p className="text-sm text-[var(--muted)]">{es.app.loading}</p>}
+
+      {state === 'error' && (
+        <div className="panel p-4 text-center flex flex-col items-center gap-3">
+          <p className="text-[var(--accent-soft)]">{loadError ?? es.gallery.loadError}</p>
+          <button type="button" onClick={retry} className="btn btn-soft">
+            {es.gallery.retryLoad}
+          </button>
+        </div>
+      )}
+
+      {state === 'idle' && hasConnectedBefore && (
+        <div className="panel p-4 text-center">
+          <p className="text-sm text-[var(--muted)]">{es.gallery.reconnectPrompt}</p>
+        </div>
+      )}
 
       {sorted.length === 0 ? (
         <div className="flex flex-col items-center text-center gap-3 py-10">

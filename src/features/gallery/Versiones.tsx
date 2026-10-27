@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { useGalleryStore, type Archivo, type Obra } from './store'
 import { uploadObraVersion } from './upload'
 import { saveObra } from './persistence'
-import { getToken } from '../auth/googleAuth'
+import { ensureToken } from '../auth/googleAuth'
+import { enqueueSave } from './saveQueue'
 import { friendlyError } from '../../lib/errors/friendlyError'
 import { imageVersiones, versionLabel, isEtapa } from './versions'
 import { es } from '../../i18n/es'
@@ -30,15 +31,14 @@ export default function Versiones({ obra, selectedId, onSelect, compareOn, canCo
   async function addVersion(files: FileList | null) {
     const file = files?.[0]
     if (!file || busy) return
-    const token = getToken()
-    if (!token) return
     setBusy(true)
     setError(null)
     try {
+      const token = await ensureToken()
       const next = await uploadObraVersion(token, obra, file, rol, etapa && isEtapa(etapa) ? etapa : undefined)
       updateObra(obra.id, { archivos: next.archivos, origen: next.origen })
       const fresh = useGalleryStore.getState().obras.find((o) => o.id === obra.id) ?? next
-      saveObra(token, fresh).catch(() => undefined)
+      void enqueueSave((saveToken) => saveObra(saveToken, fresh)).catch(() => undefined)
       const added = next.archivos[next.archivos.length - 1]
       if (added) onSelect(added.id)
       setShowAdd(false)

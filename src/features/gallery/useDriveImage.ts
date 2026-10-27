@@ -1,40 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
 import { downloadFileAsBlob } from '../drive/driveImageClient'
-import { getToken } from '../auth/googleAuth'
+import { useAuth } from '../auth/useAuth'
 
 export function useDriveImage(id: string | null | undefined): string | null {
-  const [url, setUrl] = useState<string | null>(null)
-  const lastId = useRef<string | null | undefined>(undefined)
+  const { token } = useAuth()
+  const [image, setImage] = useState<{ id: string; url: string } | null>(null)
+  const objectUrl = useRef<string | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-    let objUrl: string | null = null
-    const currentId = id ?? null
-    if (lastId.current !== currentId) {
-      lastId.current = currentId
-    }
+    if (!id || !token) return
 
-    const token = getToken()
-    if (!id || !token) {
-      return
-    }
+    let cancelled = false
     downloadFileAsBlob(token, id)
       .then((blob: Blob) => {
-        if (cancelled || lastId.current !== id) return
-        objUrl = URL.createObjectURL(blob)
-        setUrl(objUrl)
+        if (cancelled) return
+        const nextUrl = URL.createObjectURL(blob)
+        if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+        objectUrl.current = nextUrl
+        setImage({ id, url: nextUrl })
       })
       .catch(() => {
-        if (!cancelled && lastId.current === id) setUrl(null)
+        // Keep any image already loaded for this id.
       })
+
     return () => {
       cancelled = true
-      if (objUrl) URL.revokeObjectURL(objUrl)
     }
-  }, [id])
+  }, [id, token])
 
-  if (lastId.current !== (id ?? null)) {
-    return null
-  }
-  return url
+  useEffect(
+    () => () => {
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+      objectUrl.current = null
+    },
+    [],
+  )
+
+  return image && image.id === id ? image.url : null
 }

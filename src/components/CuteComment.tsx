@@ -36,17 +36,13 @@ type Props = {
 
 export default function CuteComment({ delay = 400, duration = 3500 }: Props) {
   const [visible, setVisible] = useState(false)
-  const [icon, setIcon] = useState(ICONS[0])
-  const [msg, setMsg] = useState(MESSAGES[0])
+  const [icon] = useState(() => ICONS[Math.floor(Math.random() * ICONS.length)])
+  const [msg] = useState(() => MESSAGES[Math.floor(Math.random() * MESSAGES.length)])
 
   useEffect(() => {
     const key = `cute-comment-${location.pathname}`
     if (sessionStorage.getItem(key)) return
     sessionStorage.setItem(key, '1')
-    const randIcon = ICONS[Math.floor(Math.random() * ICONS.length)]
-    const randMsg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)]
-    setIcon(randIcon)
-    setMsg(randMsg)
     const t1 = setTimeout(() => setVisible(true), delay)
     const t2 = setTimeout(() => setVisible(false), delay + duration)
     return () => {

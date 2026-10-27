@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import { syncColeccionObra, saveObra } from '../features/gallery/persistence'
-import { getToken } from '../features/auth/googleAuth'
+import { useGalleryData } from '../features/gallery/useGalleryData'
+import { enqueueSave } from '../features/gallery/saveQueue'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { StarSticker } from '../components/Stickers'
@@ -10,6 +11,7 @@ import CuteComment from '../components/CuteComment'
 
 export default function ColeccionDetail() {
   const { id } = useParams<{ id: string }>()
+  const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const coleccion = useGalleryStore((s) => s.colecciones.find((c) => c.id === id))
   const obras = useGalleryStore((s) => s.obras.filter((o) => o.coleccionIds.includes(id!)))
   const allObras = useGalleryStore((s) => s.obras)
@@ -20,8 +22,21 @@ export default function ColeccionDetail() {
 
   if (!coleccion) {
     return (
-      <div className="min-h-full p-6 flex flex-col items-center justify-center gap-4">
-        <p className="text-[var(--muted)]">{es.collections.notFound}</p>
+      <div className="min-h-full p-6 flex flex-col items-center justify-center gap-4 text-center">
+        {state === 'loading' ? (
+          <p className="text-[var(--muted)]">{es.app.loading}</p>
+        ) : state === 'error' ? (
+          <>
+            <p className="text-[var(--accent-soft)]">{loadError ?? es.gallery.loadError}</p>
+            <button type="button" onClick={retry} className="btn btn-soft">
+              {es.gallery.retryLoad}
+            </button>
+          </>
+        ) : state === 'idle' && hasConnectedBefore ? (
+          <p className="text-[var(--muted)]">{es.gallery.reconnectPrompt}</p>
+        ) : (
+          <p className="text-[var(--muted)]">{es.collections.notFound}</p>
+        )}
         <Link to="/colecciones" className="btn btn-soft">
           {es.collections.back}
         </Link>
@@ -37,12 +52,11 @@ export default function ColeccionDetail() {
     setError(null)
     try {
       addObraToColeccion(obraId, id)
-      const token = getToken()
-      if (token) {
-        await syncColeccionObra(token, coleccion!, obra, true)
-        const updated = { ...obra, coleccionIds: [...obra.coleccionIds, id!] }
-        await saveObra(token, updated)
-      }
+      await enqueueSave(async (token) => {
+        const latest = useGalleryStore.getState().obras.find((o) => o.id === obraId) ?? obra
+        await syncColeccionObra(token, coleccion!, latest, true)
+        await saveObra(token, latest)
+      })
     } catch (e) {
       console.error('Add work to collection failed', e)
       setError(friendlyError(e, es.errors.unexpected))
@@ -59,12 +73,11 @@ export default function ColeccionDetail() {
     setError(null)
     try {
       removeObraFromColeccion(obraId, id)
-      const token = getToken()
-      if (token) {
-        await syncColeccionObra(token, coleccion!, obra, false)
-        const updated = { ...obra, coleccionIds: obra.coleccionIds.filter((c) => c !== id) }
-        await saveObra(token, updated)
-      }
+      await enqueueSave(async (token) => {
+        const latest = useGalleryStore.getState().obras.find((o) => o.id === obraId) ?? obra
+        await syncColeccionObra(token, coleccion!, latest, false)
+        await saveObra(token, latest)
+      })
     } catch (e) {
       console.error('Remove work from collection failed', e)
       setError(friendlyError(e, es.errors.unexpected))
@@ -86,7 +99,7 @@ export default function ColeccionDetail() {
         <div className="flex items-center gap-2 shrink-0">
           <select
             value=""
-            disabled={busy}
+            disabled={busy || state !== 'ready'}
             onChange={(e) => {
               const obraId = e.target.value
               if (obraId) void addObra(obraId)

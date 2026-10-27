@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import { ulid } from 'ulidx'
-import { getToken } from '../features/auth/googleAuth'
-import { saveSecuencia, ensureLoaded } from '../features/gallery/persistence'
+import { ensureToken } from '../features/auth/googleAuth'
+import { useAuth } from '../features/auth/useAuth'
+import { saveSecuencia } from '../features/gallery/persistence'
+import { useGalleryData } from '../features/gallery/useGalleryData'
+import { enqueueSave } from '../features/gallery/saveQueue'
 import { uploadFrames } from '../features/gallery/pencilUpload'
 import { withUpdatedAt } from '../features/gallery/secuencias'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
@@ -16,6 +19,8 @@ export default function PencilTest() {
   const secuencias = useGalleryStore((s) => s.secuencias)
   const addSecuencia = useGalleryStore((s) => s.addSecuencia)
   const updateSecuencia = useGalleryStore((s) => s.updateSecuencia)
+  const { token } = useAuth()
+  const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const [files, setFiles] = useState<File[]>([])
   const [fps, setFps] = useState(12)
   const [titulo, setTitulo] = useState('Animación')
@@ -23,34 +28,13 @@ export default function PencilTest() {
   const [currentSecId, setCurrentSecId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   const [urls, setUrls] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const sec = secuencias.find((s) => s.id === currentSecId) || secuencias[0]
+  const loading = state === 'loading'
 
   useEffect(() => {
-    const token = getToken()
-    if (!token) {
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    setTimeout(() => {
-      setLoading(true)
-      ensureLoaded(token)
-        .catch(() => undefined)
-        .finally(() => {
-          if (!cancelled) setLoading(false)
-        })
-    }, 0)
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    const token = getToken()
     if (!token) return
     let cancelled = false
     const objUrls: string[] = []
@@ -75,7 +59,7 @@ export default function PencilTest() {
       cancelled = true
       for (const u of objUrls) URL.revokeObjectURL(u)
     }
-  }, [sec])
+  }, [sec, token])
 
   useEffect(() => {
     if (!playing || urls.length === 0) return
@@ -93,8 +77,8 @@ export default function PencilTest() {
     sorted.splice(to, 0, f)
     const frames = sorted.map((fr, i) => ({ ...fr, orden: i }))
     updateSecuencia(sec.id, { frames })
-    const token = getToken()
-    if (token) saveSecuencia(token, withUpdatedAt({ ...sec, frames })).catch(() => undefined)
+    const latest = useGalleryStore.getState().secuencias.find((s) => s.id === sec.id)
+    if (latest) void enqueueSave((saveToken) => saveSecuencia(saveToken, latest)).catch(() => undefined)
   }
 
   async function createFromFiles() {
@@ -102,6 +86,7 @@ export default function PencilTest() {
     setUploading(true)
     setError(null)
     try {
+      await ensureToken()
       const uploaded = await uploadFrames(files)
       const frames = uploaded.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
       const s = withUpdatedAt({
@@ -115,8 +100,7 @@ export default function PencilTest() {
         miniatura: uploaded[0]?.miniDataUrl || '',
       })
       addSecuencia(s)
-      const token = getToken()
-      if (token) saveSecuencia(token, s).catch(() => undefined)
+      void enqueueSave((saveToken) => saveSecuencia(saveToken, s)).catch(() => undefined)
       setFiles([])
       setCurrentSecId(s.id)
     } catch (e: any) {
@@ -172,7 +156,11 @@ export default function PencilTest() {
             className="field w-24"
           />
         </label>
-        <button onClick={createFromFiles} disabled={uploading || files.length === 0} className="btn btn-primary">
+        <button
+          onClick={createFromFiles}
+          disabled={uploading || files.length === 0 || state !== 'ready'}
+          className="btn btn-primary"
+        >
           {uploading ? 'Subiendo...' : es.pencil.create}
         </button>
         <button onClick={() => setPlaying((v) => !v)} disabled={!sec || urls.length === 0} className="btn btn-soft">
@@ -181,6 +169,21 @@ export default function PencilTest() {
       </div>
       {uploading && <p className="text-sm text-[var(--muted)]">Subiendo fotogramas...</p>}
       {error && <p className="text-sm text-[#ff9db1]">{error}</p>}
+
+      {state === 'error' && (
+        <div className="panel p-4 text-center flex flex-col items-center gap-3">
+          <p className="text-[var(--accent-soft)]">{loadError ?? es.gallery.loadError}</p>
+          <button type="button" onClick={retry} className="btn btn-soft">
+            {es.gallery.retryLoad}
+          </button>
+        </div>
+      )}
+
+      {state === 'idle' && hasConnectedBefore && (
+        <div className="panel p-4 text-center">
+          <p className="text-sm text-[var(--muted)]">{es.gallery.reconnectPrompt}</p>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center text-center gap-3 py-10">

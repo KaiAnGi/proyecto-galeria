@@ -22,29 +22,55 @@ export function frameStepSeconds(fps: number): number {
   return 1 / safe
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 export async function getVideoThumbnail(file: File): Promise<string> {
   const url = URL.createObjectURL(file)
+  const video = document.createElement('video')
+  video.muted = true
+  video.playsInline = true
+  video.preload = 'metadata'
+  video.src = url
+
   try {
-    const video = document.createElement('video')
-    video.muted = true
-    video.playsInline = true
-    video.preload = 'metadata'
-    video.src = url
-    await new Promise<void>((resolve, reject) => {
-      video.onloadeddata = () => resolve()
-      video.onerror = () => reject(new Error('No se pudo leer el vídeo'))
-      video.load()
-    })
-    await new Promise<void>((resolve) => {
-      const done = () => resolve()
-      video.onseeked = done
-      const target = Math.min(0.1, Number.isFinite(video.duration) ? video.duration : 0.1)
-      try {
-        video.currentTime = target
-      } catch {
-        resolve()
-      }
-    })
+    await withTimeout(
+      new Promise<void>((resolve, reject) => {
+        video.onloadeddata = () => resolve()
+        video.onerror = () => reject(new Error('No se pudo leer el vídeo'))
+        video.load()
+      }),
+      10_000,
+      'El vídeo tarda demasiado en cargar',
+    )
+
+    await withTimeout(
+      new Promise<void>((resolve) => {
+        video.onseeked = () => resolve()
+        const target = Math.min(0.1, Number.isFinite(video.duration) ? video.duration : 0.1)
+        try {
+          video.currentTime = target
+        } catch {
+          resolve()
+        }
+      }),
+      5_000,
+      'El vídeo tarda demasiado en preparar la miniatura',
+    ).catch(() => undefined)
+
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth || 320
     canvas.height = video.videoHeight || 240
@@ -53,6 +79,9 @@ export async function getVideoThumbnail(file: File): Promise<string> {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     return canvas.toDataURL('image/jpeg', 0.7)
   } finally {
+    video.pause()
+    video.removeAttribute('src')
+    video.load()
     URL.revokeObjectURL(url)
   }
 }

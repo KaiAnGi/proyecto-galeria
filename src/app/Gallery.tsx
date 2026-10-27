@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useRef, useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import { uploadDrawings } from '../features/gallery/upload'
-import { ensureLoaded, trashObra } from '../features/gallery/persistence'
+import { queueObraTrash } from '../features/gallery/trashQueue'
+import { useGalleryData } from '../features/gallery/useGalleryData'
 import {
   filterObras,
   collectFacets,
@@ -10,107 +11,47 @@ import {
   hasActiveFilters,
   type ObrasFilters,
 } from '../features/gallery/filters'
-import { getToken, hasValidToken, initGoogleAuth, signInWithGoogle } from '../features/auth/googleAuth'
+import { ensureToken } from '../features/auth/googleAuth'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { SkullBowSticker } from '../components/Stickers'
 import { PlusIcon, CameraIcon, ImagesIcon, SearchIcon } from '../components/Icons'
 
 export default function Gallery() {
-  const navigate = useNavigate()
   const obras = useGalleryStore((s) => s.obras)
   const colecciones = useGalleryStore((s) => s.colecciones)
-  const removeObraSoft = useGalleryStore((s) => s.removeObraSoft)
-  const clearTrashUndo = useGalleryStore((s) => s.clearTrashUndo)
-  const trashedById = useGalleryStore((s) => s.trashedById)
+  const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const [showAdd, setShowAdd] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [undoId, setUndoId] = useState<string | null>(null)
   const [filters, setFilters] = useState<ObrasFilters>(emptyFilters)
-  const [loading, setLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const facets = useMemo(() => collectFacets(obras), [obras])
   const visibles = useMemo(() => filterObras(obras, filters), [obras, filters])
   const filtering = hasActiveFilters(filters)
-
-  async function ensureValidToken(): Promise<string> {
-    let token = getToken()
-    if (hasValidToken() && token) return token
-    await initGoogleAuth()
-    await signInWithGoogle()
-    token = getToken()
-    if (!token || !hasValidToken()) throw new Error('No hay token válido')
-    return token
-  }
+  const loading = state === 'loading'
 
   function patchFilters(patch: Partial<ObrasFilters>) {
     setFilters((prev) => ({ ...prev, ...patch }))
   }
-
-  useEffect(() => {
-    const token = getToken()
-    if (!token) {
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    setTimeout(() => {
-      setLoading(true)
-      ensureLoaded(token)
-        .catch(() => {
-          // sin conexión
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false)
-        })
-    }, 0)
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!undoId) return
-    const t = setTimeout(() => {
-      const obra = trashedById[undoId]
-      const token = getToken()
-      clearTrashUndo(undoId)
-      setUndoId(null)
-      if (obra && token) trashObra(token, obra).catch(() => undefined)
-    }, 5000)
-    return () => clearTimeout(t)
-  }, [undoId, trashedById, clearTrashUndo])
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     setUploading(true)
     setError(null)
     try {
-      await ensureValidToken()
+      await ensureToken()
       const list = Array.from(files)
       await uploadDrawings(list)
       setShowAdd(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (e: any) {
+    } catch (e) {
       console.error('Upload failed', e)
-      const msg = friendlyError(e, es.gallery.uploadError)
-      setError(msg)
-      if (msg === es.errors.session || msg === es.errors.network) {
-        navigate('/')
-      }
+      setError(friendlyError(e, es.gallery.uploadError))
     } finally {
       setUploading(false)
     }
-  }
-
-  function handleUndo() {
-    if (!undoId) return
-    const obra = trashedById[undoId]
-    if (obra) useGalleryStore.getState().addObra(obra)
-    clearTrashUndo(undoId)
-    setUndoId(null)
   }
 
   return (
@@ -134,6 +75,7 @@ export default function Gallery() {
           </Link>
           <button
             onClick={() => setShowAdd((v) => !v)}
+            disabled={state !== 'ready'}
             className="btn btn-accent"
           >
             <PlusIcon className="w-5 h-5" />
@@ -164,6 +106,7 @@ export default function Gallery() {
                 accept="image/*"
                 capture="environment"
                 className="hidden"
+                disabled={state !== 'ready' || uploading}
                 onChange={(e) => handleFiles(e.target.files)}
               />
               <CameraIcon className="w-5 h-5" />
@@ -175,6 +118,7 @@ export default function Gallery() {
                 accept="image/*,video/*"
                 multiple
                 className="hidden"
+                disabled={state !== 'ready' || uploading}
                 onChange={(e) => handleFiles(e.target.files)}
               />
               <ImagesIcon className="w-5 h-5" />
@@ -257,6 +201,21 @@ export default function Gallery() {
         </div>
       </div>
 
+      {state === 'error' && (
+        <div className="panel p-5 text-center flex flex-col items-center gap-3">
+          <p className="font-medium text-[var(--accent-soft)]">{loadError ?? es.gallery.loadError}</p>
+          <button type="button" onClick={retry} className="btn btn-soft">
+            {es.gallery.retryLoad}
+          </button>
+        </div>
+      )}
+
+      {state === 'idle' && hasConnectedBefore && (
+        <div className="panel p-5 text-center">
+          <p className="text-sm text-[var(--muted)]">{es.gallery.reconnectPrompt}</p>
+        </div>
+      )}
+
       <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {loading ? (
           <div className="col-span-full flex flex-col items-center text-center gap-3 py-10">
@@ -278,7 +237,7 @@ export default function Gallery() {
             />
             <p className="text-lg font-semibold">{es.gallery.empty}</p>
             <p className="text-sm text-[var(--muted)] max-w-xs">{es.gallery.emptySub}</p>
-            <button onClick={() => setShowAdd(true)} className="btn btn-primary">
+            <button onClick={() => setShowAdd(true)} disabled={state !== 'ready'} className="btn btn-primary">
               <PlusIcon className="w-5 h-5" />
               {es.gallery.emptyCta}
             </button>
@@ -301,8 +260,7 @@ export default function Gallery() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  removeObraSoft(obra.id)
-                  setUndoId(obra.id)
+                  queueObraTrash(obra)
                 }}
                 aria-label={es.obra.trash}
                 className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-black/65 text-white hover:bg-black/80 focus-visible:outline-3 focus-visible:outline-[var(--accent)] text-sm z-10 backdrop-blur-sm"
@@ -326,18 +284,6 @@ export default function Gallery() {
           ))
         )}
       </section>
-
-      {undoId && (
-        <div
-          className="fixed left-1/2 -translate-x-1/2 panel px-4 py-3 flex items-center gap-4 z-20 pop-in"
-          style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
-        >
-          <span className="text-sm">{es.gallery.trashed}</span>
-          <button onClick={handleUndo} className="btn btn-accent">
-            {es.gallery.undo}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
