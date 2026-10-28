@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import { ulid } from 'ulidx'
 import { ensureToken } from '../features/auth/googleAuth'
 import { useAuth } from '../features/auth/useAuth'
-import { saveSecuencia } from '../features/gallery/persistence'
+import { ensureLoaded, isGalleryLoaded, saveSecuencia } from '../features/gallery/persistence'
 import { useGalleryData } from '../features/gallery/useGalleryData'
 import { enqueueSave } from '../features/gallery/saveQueue'
 import { uploadFrames } from '../features/gallery/pencilUpload'
 import { withUpdatedAt } from '../features/gallery/secuencias'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
+import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { BatSticker } from '../components/Stickers'
 import { PlusIcon, PencilIcon } from '../components/Icons'
@@ -29,7 +30,9 @@ export default function PencilTest() {
   const [index, setIndex] = useState(0)
   const [urls, setUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const sec = secuencias.find((s) => s.id === currentSecId) || secuencias[0]
   const loading = state === 'loading'
@@ -81,13 +84,22 @@ export default function PencilTest() {
     if (latest) void enqueueSave((saveToken) => saveSecuencia(saveToken, latest)).catch(() => undefined)
   }
 
+  function handlePick(event: ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    setFiles(picked)
+    setError(null)
+  }
+
   async function createFromFiles() {
-    if (files.length === 0) return
+    if (files.length === 0 || uploading) return
     setUploading(true)
+    setProgress({ done: 0, total: files.length })
     setError(null)
     try {
-      await ensureToken()
-      const uploaded = await uploadFrames(files)
+      const token = await ensureToken()
+      if (!isGalleryLoaded()) await ensureLoaded(token)
+      const uploaded = await uploadFrames(files, (done, total) => setProgress({ done, total }))
       const frames = uploaded.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
       const s = withUpdatedAt({
         schema: 1 as const,
@@ -103,11 +115,12 @@ export default function PencilTest() {
       void enqueueSave((saveToken) => saveSecuencia(saveToken, s)).catch(() => undefined)
       setFiles([])
       setCurrentSecId(s.id)
-    } catch (e: any) {
+    } catch (e) {
       console.error('Upload frames failed', e)
-      setError(e?.message || 'No se han podido subir los fotogramas')
+      setError(friendlyError(e, es.pencil.uploadError))
     } finally {
       setUploading(false)
+      setProgress(null)
     }
   }
 
@@ -126,18 +139,24 @@ export default function PencilTest() {
       </header>
 
       <div className="panel p-4 flex flex-wrap items-center gap-3 fade-up" style={{ animationDelay: '0.08s' }}>
-        <label className="btn btn-soft">
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => setFiles(Array.from(e.target.files || []))}
-          />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          disabled={uploading}
+          onChange={handlePick}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="btn btn-soft"
+        >
           <PlusIcon className="w-5 h-5" />
           {es.pencil.pick}
-        </label>
+        </button>
         <input
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
@@ -156,18 +175,19 @@ export default function PencilTest() {
             className="field w-24"
           />
         </label>
-        <button
-          onClick={createFromFiles}
-          disabled={uploading || files.length === 0 || state !== 'ready'}
-          className="btn btn-primary"
-        >
-          {uploading ? 'Subiendo...' : es.pencil.create}
+        <button onClick={createFromFiles} disabled={uploading || files.length === 0} className="btn btn-primary">
+          {uploading ? es.pencil.creating : es.pencil.createWithCount(files.length)}
         </button>
         <button onClick={() => setPlaying((v) => !v)} disabled={!sec || urls.length === 0} className="btn btn-soft">
           {playing ? es.pencil.pause : es.pencil.play}
         </button>
+        {files.length > 0 && <span className="text-sm text-[var(--muted)]">{es.pencil.selected(files.length)}</span>}
       </div>
-      {uploading && <p className="text-sm text-[var(--muted)]">Subiendo fotogramas...</p>}
+      {progress && (
+        <p className="text-sm text-[var(--muted)]">
+          {es.pencil.uploadingFrame(Math.min(progress.done + 1, progress.total), progress.total)}
+        </p>
+      )}
       {error && <p className="text-sm text-[#ff9db1]">{error}</p>}
 
       {state === 'error' && (

@@ -1,4 +1,5 @@
 ﻿import { ulid } from 'ulidx'
+import { assertDriveOk } from './driveHttp'
 
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
@@ -18,7 +19,7 @@ export async function findRootFolder(token: string): Promise<DriveFile | null> {
   const res = await fetch(url, {
     headers: { Authorization: 'Bearer ' + token },
   })
-  if (!res.ok) throw new Error('Drive API error: ' + res.status)
+  assertDriveOk(res, 'Drive API error')
   const data = await res.json()
   const files = data.files || []
   return files[0] || null
@@ -45,7 +46,7 @@ export async function createFolder(
     },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error('Drive API error: ' + res.status)
+  assertDriveOk(res, 'Drive API error')
   return res.json()
 }
 
@@ -61,7 +62,7 @@ export async function findFolderByName(token: string, name: string, parentId: st
   const q = encodeURIComponent(`name='${name}' and trashed=false and '${parentId}' in parents`)
   const url = DRIVE_API + '/files?q=' + q + '&spaces=drive&fields=files(id,name,mimeType,appProperties,parents)'
   const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } })
-  if (!res.ok) throw new Error('Drive API error: ' + res.status)
+  assertDriveOk(res, 'Drive API error')
   const data = await res.json()
   const files = data.files || []
   return files[0] || null
@@ -114,7 +115,7 @@ export async function saveTestFile(token: string): Promise<any> {
   form.append('file', blob)
   const uploadUrl = DRIVE_UPLOAD + '/files?uploadType=multipart&fields=id,name,modifiedTime,appProperties'
   const up = await fetch(uploadUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form })
-  if (!up.ok) throw new Error('Upload error: ' + up.status)
+  assertDriveOk(up, 'Upload error')
   return up.json()
 }
 
@@ -124,11 +125,11 @@ export async function loadTestFile(token: string): Promise<any> {
   const q = encodeURIComponent("name='config.json' and trashed=false")
   const url = DRIVE_API + '/files?q=' + q + '&fields=files(id,name)'
   const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } })
-  if (!res.ok) throw new Error('Drive API error: ' + res.status)
+  assertDriveOk(res, 'Drive API error')
   const d = await res.json()
   const f = (d.files || [])[0]
   if (!f) throw new Error('Archivo de prueba no encontrado')
   const dl = await fetch(DRIVE_API + '/files/' + f.id + '?alt=media', { headers: { Authorization: 'Bearer ' + token } })
-  if (!dl.ok) throw new Error('Download error: ' + dl.status)
+  assertDriveOk(dl, 'Download error')
   return dl.json()
 }

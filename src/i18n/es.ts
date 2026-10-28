@@ -210,8 +210,17 @@
   pencil: {
     title: 'Pencil Test',
     back: 'Volver',
-    create: 'Crear',
+    createWithCount: (n: number) =>
+      n === 0
+        ? 'Crear animación'
+        : n === 1
+          ? 'Crear animación (1 fotograma)'
+          : `Crear animación (${n} fotogramas)`,
+    creating: 'Subiendo...',
     pick: 'Elegir fotogramas',
+    selected: (n: number) => (n === 1 ? '1 fotograma elegido' : `${n} fotogramas elegidos`),
+    uploadingFrame: (i: number, n: number) => `Subiendo fotograma ${i} de ${n}...`,
+    uploadError: 'No se han podido subir los fotogramas.',
     fps: 'Fotogramas por segundo',
     play: 'Reproducir',
     pause: 'Pausar',
