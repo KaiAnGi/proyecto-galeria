@@ -1,6 +1,7 @@
 import { createFolder, ensureFolder, findFolderByName, findRootFolder } from './driveClient'
 import { DRIVE_API } from './driveImageClient'
 import type { Coleccion, Obra } from '../gallery/store'
+import type { Secuencia } from '../gallery/secuencias'
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
 
@@ -80,6 +81,24 @@ export async function syncObraIntoColeccionFolder(
 ): Promise<void> {
   const folderId = coleccion.driveFolderId || (await ensureColeccionFolder(token, coleccion))
   const ids = obraFileIds(obra)
+  if (shouldBeInside) await addFilesToFolder(token, ids, folderId)
+  else await removeFilesFromFolder(token, ids, folderId)
+}
+
+export function secuenciaFileIds(secuencia: Secuencia): string[] {
+  return secuencia.frames
+    .flatMap((frame) => [frame.drive.originalId, frame.drive.galeriaId])
+    .filter((x): x is string => Boolean(x))
+}
+
+export async function syncSecuenciaIntoColeccionFolder(
+  token: string,
+  coleccion: Coleccion,
+  secuencia: Secuencia,
+  shouldBeInside: boolean,
+): Promise<void> {
+  const folderId = coleccion.driveFolderId || (await ensureColeccionFolder(token, coleccion))
+  const ids = secuenciaFileIds(secuencia)
   if (shouldBeInside) await addFilesToFolder(token, ids, folderId)
   else await removeFilesFromFolder(token, ids, folderId)
 }

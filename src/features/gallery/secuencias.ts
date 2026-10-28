@@ -14,6 +14,7 @@ export interface Secuencia {
   bucle: boolean
   frames: Frame[]
   miniatura: string
+  coleccionIds?: string[]
 }
 
 export function withUpdatedAt<T extends object>(value: T): T & { updatedAt: string } {

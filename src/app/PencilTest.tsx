@@ -110,6 +110,7 @@ export default function PencilTest() {
         bucle: true,
         frames,
         miniatura: uploaded[0]?.miniDataUrl || '',
+        coleccionIds: [],
       })
       addSecuencia(s)
       void enqueueSave((saveToken) => saveSecuencia(saveToken, s)).catch(() => undefined)

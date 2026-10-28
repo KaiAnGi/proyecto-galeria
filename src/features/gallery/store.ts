@@ -80,6 +80,8 @@ interface GalleryState {
   addSecuencia: (s: Secuencia) => void
   updateSecuencia: (id: string, patch: Partial<Secuencia>) => void
   removeSecuencia: (id: string) => void
+  addSecuenciaToColeccion: (secuenciaId: string, coleccionId: string) => void
+  removeSecuenciaFromColeccion: (secuenciaId: string, coleccionId: string) => void
   addEntrega: (e: Entrega) => void
   updateEntrega: (id: string, patch: Partial<Entrega>) => void
   removeEntrega: (id: string) => void
@@ -132,6 +134,32 @@ export const useGalleryStore = create<GalleryState>((set) => ({
       secuencias: state.secuencias.map((s) => (s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s)),
     })),
   removeSecuencia: (id) => set((state) => ({ secuencias: state.secuencias.filter((s) => s.id !== id) })),
+  addSecuenciaToColeccion: (secuenciaId, coleccionId) =>
+    set((state) => ({
+      secuencias: state.secuencias.map((s) =>
+        s.id === secuenciaId
+          ? {
+              ...s,
+              coleccionIds: (s.coleccionIds ?? []).includes(coleccionId)
+                ? s.coleccionIds
+                : [...(s.coleccionIds ?? []), coleccionId],
+              updatedAt: new Date().toISOString(),
+            }
+          : s,
+      ),
+    })),
+  removeSecuenciaFromColeccion: (secuenciaId, coleccionId) =>
+    set((state) => ({
+      secuencias: state.secuencias.map((s) =>
+        s.id === secuenciaId
+          ? {
+              ...s,
+              coleccionIds: (s.coleccionIds ?? []).filter((id) => id !== coleccionId),
+              updatedAt: new Date().toISOString(),
+            }
+          : s,
+      ),
+    })),
   addEntrega: (e) => set((state) => ({ entregas: [e, ...state.entregas] })),
   updateEntrega: (id, patch) =>
     set((state) => ({

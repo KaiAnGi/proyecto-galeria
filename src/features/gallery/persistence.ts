@@ -1,6 +1,10 @@
 import { getFolderIds } from './upload'
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
-import { ensureColeccionFolder, syncObraIntoColeccionFolder } from '../drive/collectionFolders'
+import {
+  ensureColeccionFolder,
+  syncObraIntoColeccionFolder,
+  syncSecuenciaIntoColeccionFolder,
+} from '../drive/collectionFolders'
 import type { Obra, Coleccion, Entrega } from './store'
 import type { Secuencia } from './secuencias'
 import { useGalleryStore } from './store'
@@ -30,6 +34,15 @@ export async function syncColeccionObra(
   inside: boolean,
 ): Promise<void> {
   await syncObraIntoColeccionFolder(token, coleccion, obra, inside)
+}
+
+export async function syncColeccionSecuencia(
+  token: string,
+  coleccion: Coleccion,
+  secuencia: Secuencia,
+  inside: boolean,
+): Promise<void> {
+  await syncSecuenciaIntoColeccionFolder(token, coleccion, secuencia, inside)
 }
 
 export async function saveSecuencia(token: string, secuencia: Secuencia): Promise<void> {

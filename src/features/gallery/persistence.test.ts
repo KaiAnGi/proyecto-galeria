@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Obra, Coleccion, Entrega } from './store'
+import type { Secuencia } from './secuencias'
 
 vi.mock('./upload', () => ({
   getFolderIds: vi.fn(async () => ({
@@ -28,14 +29,17 @@ vi.mock('../drive/driveImageClient', () => ({
 vi.mock('../drive/collectionFolders', () => ({
   ensureColeccionFolder: vi.fn(async () => 'col-folder-1'),
   syncObraIntoColeccionFolder: vi.fn(async () => undefined),
+  syncSecuenciaIntoColeccionFolder: vi.fn(async () => undefined),
 }))
 
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
+import { syncSecuenciaIntoColeccionFolder } from '../drive/collectionFolders'
 import {
   saveObra,
   saveColeccion,
   saveEntrega,
   loadAllData,
+  syncColeccionSecuencia,
   trashObra,
   trashEntrega,
   ensureLoaded,
@@ -79,6 +83,19 @@ const coleccion: Coleccion = {
   orden: 0,
 }
 
+const secuencia: Secuencia = {
+  schema: 1,
+  id: 's1',
+  rev: 1,
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  titulo: 'Animación',
+  fps: 12,
+  bucle: true,
+  frames: [{ id: 'f1', orden: 0, drive: { originalId: 'orig-1', galeriaId: 'gal-1' } }],
+  miniatura: '',
+  coleccionIds: [],
+}
+
 const entrega: Entrega = {
   schema: 1,
   id: 'ent-1',
@@ -120,6 +137,16 @@ describe('saveColeccion', () => {
     expect(name).toBe('coleccion-col-1.json')
     expect(parents).toEqual(['colecciones'])
     expect(appProps).toMatchObject({ kind: 'coleccion', id: 'col-1' })
+  })
+})
+
+describe('syncColeccionSecuencia', () => {
+  it('moves the animation frames into or out of the collection folder', async () => {
+    await syncColeccionSecuencia('token', coleccion, secuencia, true)
+    await syncColeccionSecuencia('token', coleccion, secuencia, false)
+
+    expect(syncSecuenciaIntoColeccionFolder).toHaveBeenNthCalledWith(1, 'token', coleccion, secuencia, true)
+    expect(syncSecuenciaIntoColeccionFolder).toHaveBeenNthCalledWith(2, 'token', coleccion, secuencia, false)
   })
 })
 
