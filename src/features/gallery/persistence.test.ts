@@ -30,10 +30,11 @@ vi.mock('../drive/collectionFolders', () => ({
   ensureColeccionFolder: vi.fn(async () => 'col-folder-1'),
   syncObraIntoColeccionFolder: vi.fn(async () => undefined),
   syncSecuenciaIntoColeccionFolder: vi.fn(async () => undefined),
+  trashColeccionFolder: vi.fn(async () => undefined),
 }))
 
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
-import { syncSecuenciaIntoColeccionFolder } from '../drive/collectionFolders'
+import { syncSecuenciaIntoColeccionFolder, trashColeccionFolder } from '../drive/collectionFolders'
 import {
   saveObra,
   saveColeccion,
@@ -41,6 +42,7 @@ import {
   loadAllData,
   syncColeccionSecuencia,
   trashObra,
+  trashColeccion,
   trashEntrega,
   ensureLoaded,
   resetLoadedOnce,
@@ -215,6 +217,19 @@ describe('trashEntrega', () => {
 
     expect(findFileByName).toHaveBeenCalledWith('token', 'entrega-ent-1.json', 'entregas')
     expect(trashFile).toHaveBeenCalledWith('token', 'json-9')
+  })
+})
+
+describe('trashColeccion', () => {
+  it('moves the collection JSON and its folder to the trash', async () => {
+    ;(findFileByName as any).mockResolvedValue({ id: 'json-2', name: 'coleccion-col-1.json' })
+    const conCarpeta: Coleccion = { ...coleccion, driveFolderId: 'folder-1' }
+
+    await trashColeccion('token', conCarpeta)
+
+    expect(findFileByName).toHaveBeenCalledWith('token', 'coleccion-col-1.json', 'colecciones')
+    expect(trashFile).toHaveBeenCalledWith('token', 'json-2')
+    expect(trashColeccionFolder).toHaveBeenCalledWith('token', conCarpeta)
   })
 })
 

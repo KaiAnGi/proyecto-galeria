@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { Coleccion, Obra } from '../features/gallery/store'
 import type { Secuencia } from '../features/gallery/secuencias'
 import { useGalleryStore } from '../features/gallery/store'
+import { queueColeccionTrash } from '../features/gallery/trashQueue'
 import ColeccionDetail from './ColeccionDetail'
 
 vi.mock('../features/gallery/useGalleryData', () => ({
@@ -24,6 +25,10 @@ vi.mock('../features/gallery/persistence', () => ({
 
 vi.mock('../features/gallery/saveQueue', () => ({
   enqueueSave: vi.fn(),
+}))
+
+vi.mock('../features/gallery/trashQueue', () => ({
+  queueColeccionTrash: vi.fn(),
 }))
 
 const coleccion: Coleccion = {
@@ -107,5 +112,24 @@ describe('ColeccionDetail', () => {
 
     const backLink = screen.getByRole('link', { name: /volver/i })
     expect(backLink.getAttribute('href')).toBe('/colecciones')
+  })
+
+  it('queues the collection for the trash and returns to the list', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(
+      <MemoryRouter initialEntries={['/coleccion/col-1']}>
+        <Routes>
+          <Route path="/coleccion/:id" element={<ColeccionDetail />} />
+          <Route path="/colecciones" element={<p>Lista de colecciones</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar colección' }))
+
+    expect(confirm).toHaveBeenCalled()
+    expect(queueColeccionTrash).toHaveBeenCalledWith(coleccion)
+    expect(screen.getByText('Lista de colecciones')).toBeTruthy()
+    confirm.mockRestore()
   })
 })

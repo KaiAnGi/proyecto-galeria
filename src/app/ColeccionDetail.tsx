@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import {
   saveObra,
@@ -9,6 +9,7 @@ import {
 } from '../features/gallery/persistence'
 import { useGalleryData } from '../features/gallery/useGalleryData'
 import { enqueueSave } from '../features/gallery/saveQueue'
+import { queueColeccionTrash } from '../features/gallery/trashQueue'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { StarSticker } from '../components/Stickers'
@@ -16,6 +17,7 @@ import CuteComment from '../components/CuteComment'
 
 export default function ColeccionDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const coleccion = useGalleryStore((s) => s.colecciones.find((c) => c.id === id))
   const allObras = useGalleryStore((s) => s.obras)
@@ -137,6 +139,13 @@ export default function ColeccionDetail() {
     }
   }
 
+  function handleTrash() {
+    if (!coleccion) return
+    if (!window.confirm(es.collections.deleteConfirm)) return
+    queueColeccionTrash(coleccion)
+    navigate('/colecciones')
+  }
+
   const disponibles = allObras.filter((o) => !(o.coleccionIds ?? []).includes(id!))
   const animacionesDisponibles = allSecuencias.filter((s) => !(s.coleccionIds ?? []).includes(id!))
 
@@ -189,6 +198,9 @@ export default function ColeccionDetail() {
               </option>
             ))}
           </select>
+          <button type="button" onClick={handleTrash} className="btn btn-danger shrink-0">
+            {es.collections.trash}
+          </button>
           <Link to="/colecciones" className="btn btn-soft">
             ← {es.collections.back}
           </Link>

@@ -146,6 +146,8 @@
     addAnimation: 'Añadir animación',
     removeAnimation: 'Quitar',
     emptyAnimations: 'Esta colección aún no tiene animaciones.',
+    trash: 'Borrar colección',
+    deleteConfirm: '¿Borrar esta colección? La carpeta se moverá a la papelera, pero los dibujos se quedarán.',
     notebook: 'Cuaderno',
     untitled: 'Sin título',
     tipo: {

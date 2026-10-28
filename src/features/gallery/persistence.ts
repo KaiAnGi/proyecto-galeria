@@ -4,6 +4,7 @@ import {
   ensureColeccionFolder,
   syncObraIntoColeccionFolder,
   syncSecuenciaIntoColeccionFolder,
+  trashColeccionFolder,
 } from '../drive/collectionFolders'
 import type { Obra, Coleccion, Entrega } from './store'
 import type { Secuencia } from './secuencias'
@@ -78,6 +79,7 @@ export async function trashObra(token: string, obra: Obra): Promise<void> {
 export async function trashColeccion(token: string, coleccion: Coleccion): Promise<void> {
   const folders = await getFolderIds(token)
   await trashJsonByName(token, folders.coleccionesId, `coleccion-${coleccion.id}.json`)
+  await trashColeccionFolder(token, coleccion)
 }
 
 export async function trashSecuencia(token: string, secuencia: Secuencia): Promise<void> {

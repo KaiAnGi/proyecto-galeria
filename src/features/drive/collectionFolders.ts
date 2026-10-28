@@ -1,5 +1,5 @@
 import { createFolder, ensureFolder, findFolderByName, findRootFolder } from './driveClient'
-import { DRIVE_API } from './driveImageClient'
+import { DRIVE_API, trashFile } from './driveImageClient'
 import type { Coleccion, Obra } from '../gallery/store'
 import type { Secuencia } from '../gallery/secuencias'
 
@@ -41,6 +41,19 @@ async function setFileAppProperties(token: string, fileId: string, appProps: Rec
     body: JSON.stringify({ appProperties: appProps }),
   })
   if (!res.ok) throw new Error('Drive API error: ' + res.status)
+}
+
+export async function trashColeccionFolder(token: string, coleccion: Coleccion): Promise<void> {
+  if (coleccion.driveFolderId) {
+    await trashFile(token, coleccion.driveFolderId)
+    return
+  }
+
+  const rootId = await getRootFolderId(token)
+  const coleccionesFolder = await findFolderByName(token, 'Colecciones', rootId)
+  if (!coleccionesFolder) return
+  const folder = await findFolderByName(token, coleccion.nombre, coleccionesFolder.id)
+  if (folder?.appProperties?.id === coleccion.id) await trashFile(token, folder.id)
 }
 
 export async function addFilesToFolder(token: string, fileIds: string[], folderId: string): Promise<void> {
