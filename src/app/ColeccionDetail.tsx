@@ -18,10 +18,10 @@ export default function ColeccionDetail() {
   const { id } = useParams<{ id: string }>()
   const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const coleccion = useGalleryStore((s) => s.colecciones.find((c) => c.id === id))
-  const obras = useGalleryStore((s) => s.obras.filter((o) => o.coleccionIds.includes(id!)))
   const allObras = useGalleryStore((s) => s.obras)
-  const animaciones = useGalleryStore((s) => s.secuencias.filter((a) => (a.coleccionIds ?? []).includes(id!)))
   const allSecuencias = useGalleryStore((s) => s.secuencias)
+  const obras = allObras.filter((o) => (o.coleccionIds ?? []).includes(id!))
+  const animaciones = allSecuencias.filter((a) => (a.coleccionIds ?? []).includes(id!))
   const addObraToColeccion = useGalleryStore((s) => s.addObraToColeccion)
   const removeObraFromColeccion = useGalleryStore((s) => s.removeObraFromColeccion)
   const addSecuenciaToColeccion = useGalleryStore((s) => s.addSecuenciaToColeccion)
@@ -137,7 +137,7 @@ export default function ColeccionDetail() {
     }
   }
 
-  const disponibles = allObras.filter((o) => !o.coleccionIds.includes(id!))
+  const disponibles = allObras.filter((o) => !(o.coleccionIds ?? []).includes(id!))
   const animacionesDisponibles = allSecuencias.filter((s) => !(s.coleccionIds ?? []).includes(id!))
 
   return (

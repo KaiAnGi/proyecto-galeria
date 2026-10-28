@@ -59,7 +59,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (83 pruebas: autenticación/sesión, datos/Drive, caché de carpetas, concurrencia, reintentos, carga parcial, colecciones/animaciones, colas de guardado y borrado, ZIP, subida de fotogramas, media y filtros).
+- Unitarias con Vitest: `npm run test` (85 pruebas: autenticación/sesión, datos/Drive, caché de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, colas de guardado y borrado, ZIP, subida de fotogramas, media y filtros).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
 
