@@ -2,25 +2,14 @@ import { ulid } from 'ulidx'
 import { fileToBitmap, createMiniDataUrl, imageExtension, processImage } from '../../lib/image/imageProcessor'
 import { classifyFile, getVideoThumbnail } from '../../lib/media/mediaProcessor'
 import { uploadBlob, uploadJson } from '../drive/driveImageClient'
+import { addFilesToFolder } from '../drive/collectionFolders'
 import type { Obra, Archivo } from './store'
 import { useGalleryStore } from './store'
 import { ensureToken } from '../auth/googleAuth'
-import { findRootFolder, createFolder } from '../drive/driveClient'
-import { assertDriveOk, onDriveAuthError } from '../drive/driveHttp'
+import { ensureDriveStructure } from '../drive/driveClient'
+import { onDriveAuthError } from '../drive/driveHttp'
 import { mapWithConcurrency } from '../../lib/async/mapWithConcurrency'
 import { computeOrigen } from './versions'
-
-export async function ensureFolder(token: string, rootId: string, name: string, kind: string): Promise<string> {
-  const q = encodeURIComponent(`name='${name}' and trashed=false and '${rootId}' in parents`)
-  const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`
-  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } })
-  assertDriveOk(res, 'Drive API error')
-  const d = await res.json()
-  const f = (d.files || [])[0]
-  if (f?.id) return f.id
-  const created = await createFolder(token, name, [rootId], { kind, rootId })
-  return created.id
-}
 
 export interface FolderIds {
   rootId: string
@@ -33,6 +22,7 @@ export interface FolderIds {
   coleccionesId: string
   secuenciasId: string
   entregasId: string
+  inboxId: string
 }
 
 let cachedFolders: FolderIds | null = null
@@ -46,35 +36,19 @@ export function clearFolderCache(): void {
 onDriveAuthError(clearFolderCache)
 
 async function loadFolderIds(token: string): Promise<FolderIds> {
-  const root = await findRootFolder(token)
-  if (!root) throw new Error('Raíz no encontrada')
-
-  const [archivosId, datosId] = await Promise.all([
-    ensureFolder(token, root.id, 'archivos', 'archivos'),
-    ensureFolder(token, root.id, '_datos', 'datos'),
-  ])
-
-  const [originalesId, galeriaId, miniaturasId, obrasId, coleccionesId, secuenciasId, entregasId] = await Promise.all([
-    ensureFolder(token, archivosId, 'originales', 'originales'),
-    ensureFolder(token, archivosId, 'galeria', 'galeria'),
-    ensureFolder(token, archivosId, 'miniaturas', 'miniaturas'),
-    ensureFolder(token, datosId, 'obras', 'obras'),
-    ensureFolder(token, datosId, 'colecciones', 'colecciones'),
-    ensureFolder(token, datosId, 'secuencias', 'secuencias'),
-    ensureFolder(token, datosId, 'entregas', 'entregas'),
-  ])
-
+  const structure = await ensureDriveStructure(token)
   return {
-    rootId: root.id,
-    archivosId,
-    originalesId,
-    galeriaId,
-    miniaturasId,
-    datosId,
-    obrasId,
-    coleccionesId,
-    secuenciasId,
-    entregasId,
+    rootId: structure.rootId,
+    archivosId: structure.archivosId,
+    originalesId: structure.originalesId,
+    galeriaId: structure.galeriaId,
+    miniaturasId: structure.miniaturasId,
+    datosId: structure.internoId,
+    obrasId: structure.obrasId,
+    coleccionesId: structure.coleccionesId,
+    secuenciasId: structure.secuenciasId,
+    entregasId: structure.entregasId,
+    inboxId: structure.inboxId,
   }
 }
 
@@ -96,21 +70,36 @@ export async function getFolderIds(token: string): Promise<FolderIds> {
 
 const UPLOAD_CONCURRENCY = 2
 
+function mainFileBase(id: string): string {
+  return `Sin título [${id.slice(-6)}]`
+}
+
+function videoExtension(file: File): string {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  return ext && /^[a-z0-9]{1,5}$/.test(ext) ? ext : 'mp4'
+}
+
 async function uploadDrawing(file: File, folders: FolderIds): Promise<Obra> {
   const token = await ensureToken()
   const now = new Date()
   const isoDate = now.toISOString()
   const id = ulid()
   const kind = classifyFile(file)
+  const base = mainFileBase(id)
 
   let archivo: Archivo
   let miniatura = ''
+  let mainFileId = ''
 
   if (kind === 'video') {
     const [upOrig, thumbnail] = await Promise.all([
-      uploadBlob(token, file, `${id}-original`, [folders.originalesId], { kind: 'original', obraId: id }),
+      uploadBlob(token, file, `${base}.${videoExtension(file)}`, [folders.originalesId], {
+        kind: 'original',
+        obraId: id,
+      }),
       getVideoThumbnail(file).catch(() => ''),
     ])
+    mainFileId = upOrig.id
     miniatura = thumbnail
     if (miniatura) {
       const miniBlob = await (await fetch(miniatura)).blob()
@@ -140,12 +129,13 @@ async function uploadDrawing(file: File, folders: FolderIds): Promise<Obra> {
 
     const miniBlob = await (await fetch(miniatura)).blob()
     const [upOrig] = await Promise.all([
-      uploadBlob(token, file, `${id}-original`, [folders.originalesId], { kind: 'original', obraId: id }),
+      uploadBlob(token, file, `${base}.gif`, [folders.originalesId], { kind: 'original', obraId: id }),
       uploadBlob(token, miniBlob, `${id}-mini.${imageExtension(miniBlob)}`, [folders.miniaturasId], {
         kind: 'miniatura',
         obraId: id,
       }),
     ])
+    mainFileId = upOrig.id
     archivo = {
       id: ulid(),
       tipo: 'gif',
@@ -168,13 +158,14 @@ async function uploadDrawing(file: File, folders: FolderIds): Promise<Obra> {
     }
 
     miniatura = processed.miniDataUrl
-    const galeriaName = `${id}.${imageExtension(processed.galleryBlob)}`
+    const galeriaName = `${base}.${imageExtension(processed.galleryBlob)}`
     const miniName = `${id}-mini.${imageExtension(processed.miniBlob)}`
     const [upOrig, upGal] = await Promise.all([
       uploadBlob(token, file, `${id}-original`, [folders.originalesId], { kind: 'original', obraId: id }),
       uploadBlob(token, processed.galleryBlob, galeriaName, [folders.galeriaId], { kind: 'galeria', obraId: id }),
       uploadBlob(token, processed.miniBlob, miniName, [folders.miniaturasId], { kind: 'miniatura', obraId: id }),
     ])
+    mainFileId = upGal.id
     archivo = {
       id: ulid(),
       tipo: 'imagen',
@@ -206,6 +197,7 @@ async function uploadDrawing(file: File, folders: FolderIds): Promise<Obra> {
     archivos: [archivo],
   }
 
+  await addFilesToFolder(token, [mainFileId], folders.inboxId)
   await uploadJson(token, obra, `obra-${id}.json`, [folders.obrasId], { kind: 'obra', id })
   useGalleryStore.getState().addObra(obra)
   return obra

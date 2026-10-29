@@ -99,17 +99,24 @@ export default function PencilTest() {
     try {
       const token = await ensureToken()
       if (!isGalleryLoaded()) await ensureLoaded(token)
-      const uploaded = await uploadFrames(files, (done, total) => setProgress({ done, total }))
-      const frames = uploaded.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
+      const id = ulid()
+      const safeFps = Math.min(24, Math.max(6, fps))
+      const uploaded = await uploadFrames(
+        files,
+        { id, titulo: titulo || 'Animación', fps: safeFps },
+        (done, total) => setProgress({ done, total }),
+      )
+      const frames = uploaded.frames.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
       const s = withUpdatedAt({
         schema: 1 as const,
-        id: ulid(),
+        id,
         rev: 1,
         titulo: titulo || 'Animación',
-        fps: Math.min(24, Math.max(6, fps)),
+        fps: safeFps,
         bucle: true,
         frames,
-        miniatura: uploaded[0]?.miniDataUrl || '',
+        mainFileId: uploaded.mainFileId,
+        miniatura: uploaded.frames[0]?.miniDataUrl || '',
         coleccionIds: [],
       })
       addSecuencia(s)

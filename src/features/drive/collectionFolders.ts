@@ -1,4 +1,10 @@
-import { createFolder, ensureFolder, findFolderByName, findRootFolder } from './driveClient'
+import {
+  createFolder,
+  ensureAppRootFolder,
+  ensureFolder,
+  findFolderByName,
+  INBOX_FOLDER_NAME,
+} from './driveClient'
 import { DRIVE_API, trashFile } from './driveImageClient'
 import type { Coleccion, Obra } from '../gallery/store'
 import type { Secuencia } from '../gallery/secuencias'
@@ -8,39 +14,28 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder'
 export async function getRootFolderId(token: string): Promise<string> {
   const cached = sessionStorage.getItem('gallery-root-id')
   if (cached) return cached
-  const root = await findRootFolder(token)
-  if (!root) throw new Error('Raíz no encontrada')
+  const root = await ensureAppRootFolder(token)
   sessionStorage.setItem('gallery-root-id', root.id)
   return root.id
 }
 
-export async function getColeccionesFolderId(token: string): Promise<string> {
+export async function getInboxFolderId(token: string): Promise<string> {
   const rootId = await getRootFolderId(token)
-  const folder = await ensureFolder(token, 'Colecciones', rootId, 'colecciones-folder')
+  const folder = await ensureFolder(token, INBOX_FOLDER_NAME, rootId, 'inbox')
   return folder.id
 }
 
 export async function ensureColeccionFolder(token: string, coleccion: Coleccion): Promise<string> {
-  const parentId = await getColeccionesFolderId(token)
+  if (coleccion.driveFolderId) return coleccion.driveFolderId
+
+  const parentId = await getRootFolderId(token)
   const existing = await findFolderByName(token, coleccion.nombre, parentId)
-  if (existing) {
-    if (existing.appProperties?.id !== coleccion.id) {
-      await setFileAppProperties(token, existing.id, { kind: 'coleccion', id: coleccion.id })
-    }
+  if (existing?.mimeType === FOLDER_MIME && existing.appProperties?.id === coleccion.id) {
     return existing.id
   }
-  const created = await createFolder(token, coleccion.nombre, [parentId], { kind: 'coleccion', id: coleccion.id })
+  const name = existing ? `${coleccion.nombre} (${coleccion.id.slice(-4)})` : coleccion.nombre
+  const created = await createFolder(token, name, [parentId], { kind: 'coleccion', id: coleccion.id })
   return created.id
-}
-
-async function setFileAppProperties(token: string, fileId: string, appProps: Record<string, string>): Promise<void> {
-  const url = DRIVE_API + '/files/' + fileId + '?fields=id,appProperties'
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ appProperties: appProps }),
-  })
-  if (!res.ok) throw new Error('Drive API error: ' + res.status)
 }
 
 export async function trashColeccionFolder(token: string, coleccion: Coleccion): Promise<void> {
@@ -50,10 +45,10 @@ export async function trashColeccionFolder(token: string, coleccion: Coleccion):
   }
 
   const rootId = await getRootFolderId(token)
-  const coleccionesFolder = await findFolderByName(token, 'Colecciones', rootId)
-  if (!coleccionesFolder) return
-  const folder = await findFolderByName(token, coleccion.nombre, coleccionesFolder.id)
-  if (folder?.appProperties?.id === coleccion.id) await trashFile(token, folder.id)
+  const folder = await findFolderByName(token, coleccion.nombre, rootId)
+  if (folder?.mimeType === FOLDER_MIME && folder.appProperties?.id === coleccion.id) {
+    await trashFile(token, folder.id)
+  }
 }
 
 export async function addFilesToFolder(token: string, fileIds: string[], folderId: string): Promise<void> {
@@ -80,22 +75,10 @@ export async function removeFilesFromFolder(token: string, fileIds: string[], fo
   }
 }
 
-export function obraFileIds(obra: Obra): string[] {
-  return obra.archivos
-    .flatMap((a) => [a.drive.originalId, a.drive.galeriaId, a.drive.miniaturaId])
-    .filter((x): x is string => Boolean(x))
-}
-
-export async function syncObraIntoColeccionFolder(
-  token: string,
-  coleccion: Coleccion,
-  obra: Obra,
-  shouldBeInside: boolean,
-): Promise<void> {
-  const folderId = coleccion.driveFolderId || (await ensureColeccionFolder(token, coleccion))
-  const ids = obraFileIds(obra)
-  if (shouldBeInside) await addFilesToFolder(token, ids, folderId)
-  else await removeFilesFromFolder(token, ids, folderId)
+export function obraMainFileId(obra: Obra): string | null {
+  const primary = obra.archivos[0]
+  if (!primary) return null
+  return primary.drive.galeriaId || primary.drive.originalId || null
 }
 
 export function secuenciaFileIds(secuencia: Secuencia): string[] {
@@ -104,16 +87,58 @@ export function secuenciaFileIds(secuencia: Secuencia): string[] {
     .filter((x): x is string => Boolean(x))
 }
 
+export function secuenciaMainFileId(secuencia: Secuencia): string | null {
+  if (secuencia.mainFileId) return secuencia.mainFileId
+  const first = secuencia.frames[0]
+  return first?.drive.galeriaId || first?.drive.originalId || null
+}
+
+export async function syncObraIntoColeccionFolder(
+  token: string,
+  coleccion: Coleccion,
+  obra: Obra,
+  shouldBeInside: boolean,
+): Promise<void> {
+  const fileId = obraMainFileId(obra)
+  if (!fileId) return
+
+  const folderId = coleccion.driveFolderId || (await ensureColeccionFolder(token, coleccion))
+  if (shouldBeInside) {
+    await addFilesToFolder(token, [fileId], folderId)
+    const inboxId = await getInboxFolderId(token)
+    await removeFilesFromFolder(token, [fileId], inboxId)
+    return
+  }
+
+  await removeFilesFromFolder(token, [fileId], folderId)
+  if (obra.coleccionIds.length === 0) {
+    const inboxId = await getInboxFolderId(token)
+    await addFilesToFolder(token, [fileId], inboxId)
+  }
+}
+
 export async function syncSecuenciaIntoColeccionFolder(
   token: string,
   coleccion: Coleccion,
   secuencia: Secuencia,
   shouldBeInside: boolean,
 ): Promise<void> {
+  const fileId = secuenciaMainFileId(secuencia)
+  if (!fileId) return
+
   const folderId = coleccion.driveFolderId || (await ensureColeccionFolder(token, coleccion))
-  const ids = secuenciaFileIds(secuencia)
-  if (shouldBeInside) await addFilesToFolder(token, ids, folderId)
-  else await removeFilesFromFolder(token, ids, folderId)
+  if (shouldBeInside) {
+    await addFilesToFolder(token, [fileId], folderId)
+    const inboxId = await getInboxFolderId(token)
+    await removeFilesFromFolder(token, [fileId], inboxId)
+    return
+  }
+
+  await removeFilesFromFolder(token, [fileId], folderId)
+  if ((secuencia.coleccionIds ?? []).length === 0) {
+    const inboxId = await getInboxFolderId(token)
+    await addFilesToFolder(token, [fileId], inboxId)
+  }
 }
 
 export async function listFolderChildren(token: string, folderId: string): Promise<{ id: string; name: string; isFolder: boolean }[]> {

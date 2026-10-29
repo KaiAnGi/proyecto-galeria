@@ -1,7 +1,11 @@
 import { getFolderIds } from './upload'
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
 import {
+  addFilesToFolder,
   ensureColeccionFolder,
+  getInboxFolderId,
+  obraMainFileId,
+  secuenciaMainFileId,
   syncObraIntoColeccionFolder,
   syncSecuenciaIntoColeccionFolder,
   trashColeccionFolder,
@@ -76,14 +80,58 @@ export async function trashObra(token: string, obra: Obra): Promise<void> {
   await trashJsonByName(token, folders.obrasId, `obra-${obra.id}.json`)
 }
 
-export async function trashColeccion(token: string, coleccion: Coleccion): Promise<void> {
+export interface ColeccionContents {
+  obras: Obra[]
+  secuencias: Secuencia[]
+}
+
+export async function trashColeccion(
+  token: string,
+  coleccion: Coleccion,
+  contents?: ColeccionContents,
+): Promise<void> {
   const folders = await getFolderIds(token)
+  const state = useGalleryStore.getState()
+  const obras = contents?.obras ?? state.obras.filter((o) => o.coleccionIds.includes(coleccion.id))
+  const secuencias =
+    contents?.secuencias ?? state.secuencias.filter((s) => (s.coleccionIds ?? []).includes(coleccion.id))
+  const inboxId = await getInboxFolderId(token)
+
+  const orphanObras = obras.filter((o) => o.coleccionIds.length === 1)
+  const orphanSecuencias = secuencias.filter((s) => (s.coleccionIds ?? []).length === 1)
+  await Promise.allSettled([
+    ...orphanObras.map((obra) => {
+      const fileId = obraMainFileId(obra)
+      return fileId ? addFilesToFolder(token, [fileId], inboxId) : Promise.resolve()
+    }),
+    ...orphanSecuencias.map((secuencia) => {
+      const fileId = secuenciaMainFileId(secuencia)
+      return fileId ? addFilesToFolder(token, [fileId], inboxId) : Promise.resolve()
+    }),
+  ])
+
   await trashJsonByName(token, folders.coleccionesId, `coleccion-${coleccion.id}.json`)
   await trashColeccionFolder(token, coleccion)
+
+  await Promise.allSettled([
+    ...obras.map(async (obra) => {
+      const latest = useGalleryStore.getState().obras.find((o) => o.id === obra.id)
+      if (latest) await saveObra(token, latest)
+    }),
+    ...secuencias.map(async (secuencia) => {
+      const latest = useGalleryStore.getState().secuencias.find((s) => s.id === secuencia.id)
+      if (latest) await saveSecuencia(token, latest)
+    }),
+  ])
 }
 
 export async function trashSecuencia(token: string, secuencia: Secuencia): Promise<void> {
   const folders = await getFolderIds(token)
+  const ids = secuencia.frames
+    .flatMap((frame) => [frame.drive.originalId, frame.drive.galeriaId])
+    .filter((x): x is string => Boolean(x))
+  if (secuencia.mainFileId) ids.push(secuencia.mainFileId)
+  await Promise.allSettled(ids.map((fileId) => trashFile(token, fileId)))
   await trashJsonByName(token, folders.secuenciasId, `secuencia-${secuencia.id}.json`)
 }
 

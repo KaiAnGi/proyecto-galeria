@@ -1,5 +1,6 @@
-import { ulid } from 'ulidx'
+﻿import { ulid } from 'ulidx'
 import { fileToBitmap, imageExtension, processImage } from '../../lib/image/imageProcessor'
+import { encodeGif } from '../../lib/image/gifEncoder'
 import { uploadBlob } from '../drive/driveImageClient'
 import { getFolderIds } from './upload'
 import { ensureToken, getToken } from '../auth/googleAuth'
@@ -9,13 +10,31 @@ export interface UploadedFrame extends Frame {
   miniDataUrl: string
 }
 
+export interface UploadFramesOptions {
+  id: string
+  titulo: string
+  fps: number
+}
+
+export interface UploadedFrames {
+  frames: UploadedFrame[]
+  mainFileId: string
+}
+
+function safeFileName(title: string): string {
+  const cleaned = title.trim().replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ')
+  return cleaned.slice(0, 80) || 'Animación'
+}
+
 export async function uploadFrames(
   files: File[],
+  options: UploadFramesOptions,
   onProgress?: (done: number, total: number) => void,
-): Promise<UploadedFrame[]> {
+): Promise<UploadedFrames> {
   let token = await ensureToken()
   const folders = await getFolderIds(token)
   const frames: UploadedFrame[] = []
+  const galleryBlobs: Blob[] = []
 
   for (let i = 0; i < files.length; i++) {
     if (!getToken()) token = await ensureToken()
@@ -43,6 +62,7 @@ export async function uploadFrames(
         ),
       ])
 
+      galleryBlobs.push(processed.galleryBlob)
       frames.push({
         id,
         orden: i,
@@ -53,5 +73,14 @@ export async function uploadFrames(
       bmp.close()
     }
   }
-  return frames
+
+  if (!getToken()) token = await ensureToken()
+  const gifBlob = await encodeGif(galleryBlobs, options.fps)
+  const gifName = `${safeFileName(options.titulo)} [${options.id.slice(-6)}].gif`
+  const upGif = await uploadBlob(token, gifBlob, gifName, [folders.inboxId], {
+    kind: 'secuencia',
+    id: options.id,
+  })
+
+  return { frames, mainFileId: upGif.id }
 }

@@ -27,14 +27,23 @@ vi.mock('../drive/driveImageClient', () => ({
 }))
 
 vi.mock('../drive/collectionFolders', () => ({
+  addFilesToFolder: vi.fn(async () => undefined),
   ensureColeccionFolder: vi.fn(async () => 'col-folder-1'),
+  getInboxFolderId: vi.fn(async () => 'inbox-1'),
+  obraMainFileId: vi.fn(() => 'gal-1'),
+  secuenciaMainFileId: vi.fn(() => 'gif-1'),
   syncObraIntoColeccionFolder: vi.fn(async () => undefined),
   syncSecuenciaIntoColeccionFolder: vi.fn(async () => undefined),
   trashColeccionFolder: vi.fn(async () => undefined),
 }))
 
 import { upsertJson, listJsonFiles, downloadJson, trashFile, findFileByName } from '../drive/driveImageClient'
-import { syncSecuenciaIntoColeccionFolder, trashColeccionFolder } from '../drive/collectionFolders'
+import {
+  addFilesToFolder,
+  getInboxFolderId,
+  syncSecuenciaIntoColeccionFolder,
+  trashColeccionFolder,
+} from '../drive/collectionFolders'
 import {
   saveObra,
   saveColeccion,
@@ -43,6 +52,7 @@ import {
   syncColeccionSecuencia,
   trashObra,
   trashColeccion,
+  trashSecuencia,
   trashEntrega,
   ensureLoaded,
   resetLoadedOnce,
@@ -230,6 +240,37 @@ describe('trashColeccion', () => {
     expect(findFileByName).toHaveBeenCalledWith('token', 'coleccion-col-1.json', 'colecciones')
     expect(trashFile).toHaveBeenCalledWith('token', 'json-2')
     expect(trashColeccionFolder).toHaveBeenCalledWith('token', conCarpeta)
+  })
+
+  it('returns orphan drawings and animations to the inbox before trashing the folder', async () => {
+    ;(findFileByName as any).mockResolvedValue({ id: 'json-2', name: 'coleccion-col-1.json' })
+    useGalleryStore.getState().hydrate({ obras: [obra], colecciones: [], secuencias: [secuencia], entregas: [] })
+    const conCarpeta: Coleccion = { ...coleccion, driveFolderId: 'folder-1' }
+
+    await trashColeccion('token', conCarpeta, {
+      obras: [{ ...obra, coleccionIds: ['col-1'] }],
+      secuencias: [{ ...secuencia, coleccionIds: ['col-1'] }],
+    })
+
+    expect(getInboxFolderId).toHaveBeenCalledWith('token')
+    expect(addFilesToFolder).toHaveBeenCalledWith('token', ['gal-1'], 'inbox-1')
+    expect(addFilesToFolder).toHaveBeenCalledWith('token', ['gif-1'], 'inbox-1')
+    expect(upsertJson).toHaveBeenCalledWith('token', obra, 'obra-obra-1.json', ['obras'], {
+      kind: 'obra',
+      id: 'obra-1',
+    })
+  })
+})
+
+describe('trashSecuencia', () => {
+  it('trashes every frame, the encoded GIF and the JSON', async () => {
+    ;(findFileByName as any).mockResolvedValue({ id: 'json-3', name: 'secuencia-s1.json' })
+
+    await trashSecuencia('token', { ...secuencia, mainFileId: 'gif-1' })
+
+    const trashedIds = (trashFile as any).mock.calls.map((c: any[]) => c[1])
+    expect(trashedIds).toEqual(expect.arrayContaining(['orig-1', 'gal-1', 'gif-1', 'json-3']))
+    expect(findFileByName).toHaveBeenCalledWith('token', 'secuencia-s1.json', 'secuencias')
   })
 })
 

@@ -20,7 +20,9 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 
 ### Fase 2 — Organización (hecha)
 - Colecciones y cuadernos, con vista de detalle y orden de páginas. Desde el detalle se añaden o quitan obras y animaciones, se borra la colección (también su carpeta en Drive, sin borrar los dibujos) y se vuelve a Colecciones.
-- Persistencia de colecciones en Drive (`_datos/colecciones/coleccion-<id>.json`).
+- Persistencia de colecciones en Drive (`_interno/colecciones/coleccion-<id>.json`).
+- Carpetas de colección visibles en la raíz con la imagen principal de cada obra;
+  "Sin colección" recoge lo que aún no pertenece a ninguna.
 - Búsqueda por título y notas (ignora mayúsculas y acentos).
 - Filtros por estado, colección, técnica y etiqueta; los desplegables se rellenan
   con lo que hay en la galería y hay botón "Quitar filtros".
@@ -31,13 +33,14 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 ### Fase 3 — Animación y clase (hecha)
 - Pencil test: subida de fotogramas en orden, reproducción de 6 a 24 fps con bucle,
   papel cebolla (fotograma anterior al 40 %) y reordenación de fotogramas.
-- Persistencia de secuencias en Drive (`_datos/secuencias/secuencia-<id>.json`).
+- Persistencia de secuencias en Drive (`_interno/secuencias/secuencia-<id>.json`).
+- Cada animación genera además un GIF con los fotogramas en "Sin colección".
 - Subida de GIF y vídeo (MP4/MOV/WebM): el original en `originales`, la miniatura en
   `miniaturas`; en la ficha de la obra, reproductor con reproducir/pausa, velocidad
   (0,25x–2x) y paso de fotograma.
 - Entregas de clase (`#/entregas`): fecha límite con aviso de plazo, estado
   (pendiente/en curso/entregada), obras enlazadas y persistencia en
-  `_datos/entregas/entrega-<id>.json`.
+  `_interno/entregas/entrega-<id>.json`.
 
 ### Fase 4 — Pulido y extras (parcial)
 - Sesión que sobrevive recargas con `sessionStorage`; al cerrar la pestaña el menú sigue disponible y el primer toque renueva con Google sin volver a la bienvenida.
@@ -45,6 +48,8 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Guardados en cola con aviso de "Guardando…", error visible y botón para reintentar; los cambios se envían en orden.
 - Subida de obras más rápida: IDs de carpetas cacheados (se invalidan si Drive responde 401), miniatura/galería/original en paralelo, 2 obras simultáneas y reintento con espera ante 403/429.
 - Animaciones: selector de fotogramas con contador, reinicio y progreso; subida paralela de miniatura, galería y original por fotograma.
+- Drive más claro: raíz "Kuromi Likes Your Drawings", carpeta "Sin colección" y una carpeta por colección con solo la imagen principal o el GIF; migración automática de `_datos`/`archivos`.
+- Borrar una colección devuelve sus dibujos huérfanos a "Sin colección", y borrar una animación elimina sus fotogramas y su GIF.
 - Exportación a ZIP real: datos, imágenes originales, galería, miniaturas, versiones y fotogramas.
 - Iconos PWA generados desde `public/icon.png` (`npm run generate-pwa-assets`), con icono normal, `maskable` y `apple-touch-icon`.
 - Altura dinámica (`100dvh`) y área segura (`env(safe-area-inset-*)`) para iPad.
@@ -59,7 +64,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (90 pruebas: autenticación/sesión, datos/Drive, caché de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, colas de guardado y borrado, ZIP, subida de fotogramas, media y filtros).
+- Unitarias con Vitest: `npm run test` (102 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, colas de guardado y borrado, ZIP, subida de fotogramas, media y filtros).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
 

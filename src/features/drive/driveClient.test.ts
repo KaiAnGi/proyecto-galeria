@@ -76,17 +76,91 @@ describe('createFolder', () => {
 describe('initDriveStructure', () => {
   it('returns the existing root id without creating anything', async () => {
     const fetch = fetchMock()
-    fetch.mockResolvedValueOnce(jsonResponse({ files: [{ id: 'existing-root' }] }))
+    fetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const query = decodeURIComponent(new URL(String(input)).searchParams.get('q') || '')
+      if (query.includes("key='kind'")) {
+        return jsonResponse({ files: [{ id: 'existing-root', name: 'Kuromi Likes Your Drawings' }] })
+      }
+      const name = /name='([^']+)'/.exec(query)?.[1] || 'unknown'
+      return jsonResponse({
+        files: [{ id: `id-${name}`, name, mimeType: 'application/vnd.google-apps.folder' }],
+      })
+    })
     vi.stubGlobal('fetch', fetch)
 
     expect(await initDriveStructure('token')).toBe('existing-root')
-    expect(fetch.mock.calls.length).toBe(1)
+    const posts = fetch.mock.calls.filter((call) => call[1]?.method === 'POST')
+    expect(posts).toHaveLength(0)
+  })
+
+  it('renames the legacy root folder instead of creating a new one', async () => {
+    const fetch = fetchMock()
+    fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PATCH') return jsonResponse({ id: 'existing-root', name: 'Kuromi Likes Your Drawings' })
+      const query = decodeURIComponent(new URL(String(input)).searchParams.get('q') || '')
+      if (query.includes("key='kind'")) {
+        return jsonResponse({ files: [{ id: 'existing-root', name: 'Mis obras' }] })
+      }
+      const name = /name='([^']+)'/.exec(query)?.[1] || 'unknown'
+      return jsonResponse({
+        files: [{ id: `id-${name}`, name, mimeType: 'application/vnd.google-apps.folder' }],
+      })
+    })
+    vi.stubGlobal('fetch', fetch)
+
+    expect(await initDriveStructure('token')).toBe('existing-root')
+
+    const rename = fetch.mock.calls.find((call) => call[1]?.method === 'PATCH')
+    expect(rename).toBeDefined()
+    expect(JSON.parse(rename?.[1]?.body as string)).toEqual({ name: 'Kuromi Likes Your Drawings' })
+  })
+
+  it('migrates the legacy _datos and root archivos folders', async () => {
+    const fetch = fetchMock()
+    fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PATCH') return jsonResponse({ id: 'patched' })
+      const query = decodeURIComponent(new URL(String(input)).searchParams.get('q') || '')
+      if (query.includes("key='kind'")) {
+        return jsonResponse({ files: [{ id: 'root-1', name: 'Kuromi Likes Your Drawings' }] })
+      }
+      const name = /name='([^']+)'/.exec(query)?.[1] || 'unknown'
+      const parent = /'([^']+)' in parents/.exec(query)?.[1] || ''
+      if (name === '_interno' && parent === 'root-1') return jsonResponse({ files: [] })
+      if (name === '_datos' && parent === 'root-1') {
+        return jsonResponse({
+          files: [{ id: 'legacy-datos', name: '_datos', mimeType: 'application/vnd.google-apps.folder' }],
+        })
+      }
+      if (name === 'archivos' && parent === 'legacy-datos') return jsonResponse({ files: [] })
+      if (name === 'archivos' && parent === 'root-1') {
+        return jsonResponse({
+          files: [{ id: 'legacy-archivos', name: 'archivos', mimeType: 'application/vnd.google-apps.folder' }],
+        })
+      }
+      return jsonResponse({
+        files: [{ id: `id-${name}`, name, mimeType: 'application/vnd.google-apps.folder' }],
+      })
+    })
+    vi.stubGlobal('fetch', fetch)
+
+    expect(await initDriveStructure('token')).toBe('root-1')
+
+    const patches = fetch.mock.calls.filter((call) => call[1]?.method === 'PATCH')
+    const rename = patches.find((call) => String(call[0]).includes('/files/legacy-datos'))
+    expect(JSON.parse(rename?.[1]?.body as string)).toEqual({ name: '_interno' })
+    const move = patches.find((call) => String(call[0]).includes('/files/legacy-archivos'))
+    expect(String(move?.[0])).toContain('addParents=legacy-datos')
+    expect(String(move?.[0])).toContain('removeParents=root-1')
   })
 
   it('creates the root and every subfolder on a fresh Drive', async () => {
     const fetch = fetchMock()
-    fetch.mockResolvedValueOnce(jsonResponse({ files: [] }))
-    fetch.mockImplementation(async () => jsonResponse({ id: 'new-id' }))
+    fetch.mockImplementation(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return jsonResponse({ id: 'new-id', name: JSON.parse(String(init.body)).name })
+      }
+      return jsonResponse({ files: [] })
+    })
     vi.stubGlobal('fetch', fetch)
 
     const rootId = await initDriveStructure('token')
@@ -95,37 +169,53 @@ describe('initDriveStructure', () => {
     const createdNames = fetch.mock.calls
       .filter((call) => call[1]?.method === 'POST')
       .map((call) => JSON.parse(call[1].body).name)
-    expect(createdNames).toEqual([
-      'Mis obras',
-      '_datos',
-      'obras',
-      'colecciones',
-      'secuencias',
-      'entregas',
-      'archivos',
-      'originales',
-      'galeria',
-      'miniaturas',
-    ])
+    expect(createdNames).toHaveLength(11)
+    expect(createdNames).toEqual(
+      expect.arrayContaining([
+        'Kuromi Likes Your Drawings',
+        '_interno',
+        'Sin colección',
+        'archivos',
+        'obras',
+        'colecciones',
+        'secuencias',
+        'entregas',
+        'originales',
+        'galeria',
+        'miniaturas',
+      ]),
+    )
   })
 })
 
 describe('saveTestFile', () => {
-  it('uploads a multipart config.json inside _datos', async () => {
+  it('uploads a multipart config.json inside the internal folder', async () => {
     const fetch = fetchMock()
-    fetch
-      .mockResolvedValueOnce(jsonResponse({ files: [{ id: 'root-1' }] }))
-      .mockResolvedValueOnce(jsonResponse({ files: [{ id: 'datos-1', name: '_datos' }] }))
-      .mockResolvedValueOnce(jsonResponse({ id: 'config-1', name: 'config.json' }))
+    fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') return jsonResponse({ id: 'config-1', name: 'config.json' })
+      const query = decodeURIComponent(new URL(String(input)).searchParams.get('q') || '')
+      if (query.includes("key='kind'")) {
+        return jsonResponse({ files: [{ id: 'root-1', name: 'Kuromi Likes Your Drawings' }] })
+      }
+      const name = /name='([^']+)'/.exec(query)?.[1] || 'unknown'
+      return jsonResponse({
+        files: [{ id: `id-${name}`, name, mimeType: 'application/vnd.google-apps.folder' }],
+      })
+    })
     vi.stubGlobal('fetch', fetch)
 
     const saved = await saveTestFile('token')
 
     expect(saved.id).toBe('config-1')
-    const uploadCall = fetch.mock.calls[2]
-    expect(String(uploadCall[0])).toContain('uploadType=multipart')
-    expect(uploadCall[1].method).toBe('POST')
-    expect(uploadCall[1].body).toBeInstanceOf(FormData)
+    const uploadCall = fetch.mock.calls.at(-1)
+    expect(uploadCall).toBeDefined()
+    const [uploadUrl, uploadInit] = uploadCall!
+    expect(String(uploadUrl)).toContain('uploadType=multipart')
+    expect(uploadInit?.method).toBe('POST')
+    expect(uploadInit?.body).toBeInstanceOf(FormData)
+    if (!(uploadInit?.body instanceof FormData)) throw new Error('Missing multipart form')
+    const metadata = uploadInit.body.get('metadata') as Blob
+    expect(JSON.parse(await metadata.text())).toMatchObject({ parents: ['id-_interno'] })
   })
 })
 

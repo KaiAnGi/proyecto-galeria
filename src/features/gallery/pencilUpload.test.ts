@@ -17,6 +17,10 @@ vi.mock('../../lib/image/imageProcessor', () => ({
   imageExtension: vi.fn(() => 'webp'),
 }))
 
+vi.mock('../../lib/image/gifEncoder', () => ({
+  encodeGif: vi.fn(async () => new Blob(['gif'], { type: 'image/gif' })),
+}))
+
 vi.mock('../drive/driveImageClient', () => ({
   uploadBlob: vi.fn(async (_token: string, _blob: Blob, name: string) => ({ id: `drive-${name}`, name })),
 }))
@@ -26,6 +30,7 @@ vi.mock('./upload', () => ({
     miniaturasId: 'mini',
     originalesId: 'original',
     galeriaId: 'galeria',
+    inboxId: 'inbox',
   })),
 }))
 
@@ -53,18 +58,24 @@ describe('uploadFrames', () => {
     ]
     const progress: Array<[number, number]> = []
 
-    const frames = await uploadFrames(files, (done, total) => progress.push([done, total]))
+    const result = await uploadFrames(
+      files,
+      { id: 'secuencia-1', titulo: 'Mi animación', fps: 12 },
+      (done, total) => progress.push([done, total]),
+    )
 
-    expect(frames).toHaveLength(2)
-    expect(frames.map((frame) => frame.orden)).toEqual([0, 1])
-    expect(frames[0].drive.originalId).toContain('-original')
-    expect(frames[0].drive.galeriaId).toContain('.webp')
-    expect(frames[0].miniDataUrl).toBe('data:image/webp;base64,AAAA')
+    expect(result.frames).toHaveLength(2)
+    expect(result.frames.map((frame) => frame.orden)).toEqual([0, 1])
+    expect(result.frames[0].drive.originalId).toContain('-original')
+    expect(result.frames[0].drive.galeriaId).toContain('.webp')
+    expect(result.frames[0].miniDataUrl).toBe('data:image/webp;base64,AAAA')
+    expect(result.mainFileId).toContain('Mi animación')
+    expect(result.mainFileId).toContain('.gif')
     expect(progress).toEqual([
       [0, 2],
       [1, 2],
     ])
-    expect(uploadBlob).toHaveBeenCalledTimes(6)
+    expect(uploadBlob).toHaveBeenCalledTimes(7)
   })
 
   it('renews the token between frames when it expires', async () => {
@@ -76,7 +87,7 @@ describe('uploadFrames', () => {
     vi.mocked(getToken).mockReturnValueOnce('token-1').mockReturnValueOnce(null)
     const files = [new File(['a'], 'frame-1.png', { type: 'image/png' }), new File(['b'], 'frame-2.png', { type: 'image/png' })]
 
-    await uploadFrames(files)
+    await uploadFrames(files, { id: 'secuencia-1', titulo: 'Mi animación', fps: 12 })
 
     expect(ensureToken).toHaveBeenCalledTimes(2)
   })

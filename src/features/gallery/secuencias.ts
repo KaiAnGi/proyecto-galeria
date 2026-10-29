@@ -13,6 +13,7 @@ export interface Secuencia {
   fps: number
   bucle: boolean
   frames: Frame[]
+  mainFileId?: string
   miniatura: string
   coleccionIds?: string[]
 }

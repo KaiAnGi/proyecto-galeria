@@ -96,11 +96,27 @@ export function queueObraTrash(obra: Obra): void {
 }
 
 export function queueColeccionTrash(coleccion: Coleccion): void {
-  useGalleryStore.getState().removeColeccion(coleccion.id)
+  const state = useGalleryStore.getState()
+  const obras = state.obras.filter((o) => o.coleccionIds.includes(coleccion.id))
+  const secuencias = state.secuencias.filter((s) => (s.coleccionIds ?? []).includes(coleccion.id))
+
+  state.removeColeccion(coleccion.id)
+  for (const obra of obras) state.removeObraFromColeccion(obra.id, coleccion.id)
+  for (const secuencia of secuencias) state.removeSecuenciaFromColeccion(secuencia.id, coleccion.id)
+
   queueTrash({
     key: `coleccion:${coleccion.id}`,
-    restore: () => useGalleryStore.getState().addColeccion(coleccion),
-    commit: (token) => trashColeccion(token, coleccion),
+    restore: () => {
+      const store = useGalleryStore.getState()
+      store.addColeccion(coleccion)
+      for (const obra of obras) {
+        store.updateObra(obra.id, { coleccionIds: obra.coleccionIds, ordenEnColeccion: obra.ordenEnColeccion })
+      }
+      for (const secuencia of secuencias) {
+        store.updateSecuencia(secuencia.id, { coleccionIds: secuencia.coleccionIds })
+      }
+    },
+    commit: (token) => trashColeccion(token, coleccion, { obras, secuencias }),
   })
 }
 
