@@ -47,7 +47,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Carga de obras/colecciones/secuencias/entregas desde Drive al iniciar sesión, tolerante a fallos parciales por carpeta.
 - Guardados en cola con aviso de "Guardando…", error visible y botón para reintentar; los cambios se envían en orden.
 - Subida de obras más rápida: IDs de carpetas cacheados (se invalidan si Drive responde 401), miniatura/galería/original en paralelo, 2 obras simultáneas y reintento con espera ante 403/429.
-- Animaciones: selector de fotogramas con contador, reinicio y progreso; subida paralela de miniatura, galería y original por fotograma.
+- Animaciones más rápidas: 3 fotogramas en paralelo, galería de 1024 px, GIF de 640 px con paleta compartida y originales que se suben en segundo plano sin bloquear la animación.
 - Drive más claro: raíz "Kuromi Likes Your Drawings", carpeta "Sin colección" y una carpeta por colección con solo la imagen principal o el GIF; migración automática de `_datos`/`archivos`.
 - Borrar una colección devuelve sus dibujos huérfanos a "Sin colección", y borrar una animación elimina sus fotogramas y su GIF.
 - Exportación a ZIP real: datos, imágenes originales, galería, miniaturas, versiones y fotogramas.
@@ -64,7 +64,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (102 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, colas de guardado y borrado, ZIP, subida de fotogramas, media y filtros).
+- Unitarias con Vitest: `npm run test` (103 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, colas de guardado y borrado, ZIP, subida de fotogramas y originales diferidos, media y filtros).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
 

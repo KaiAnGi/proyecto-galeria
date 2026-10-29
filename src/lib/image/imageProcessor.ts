@@ -12,12 +12,19 @@ export async function readFileAsDataUrl(blob: Blob): Promise<string> {
 }
 
 export async function fileToBitmap(file: File): Promise<ImageBitmap> {
-  let blob: Blob = file
-  if (file.type.includes('heic') || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
-    blob = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob
+  const isHeic =
+    file.type.includes('heic') || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
+
+  if (isHeic) {
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' })
+    } catch {
+      const converted = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob
+      return createImageBitmap(converted, { imageOrientation: 'from-image' })
+    }
   }
 
-  return createImageBitmap(blob, { imageOrientation: 'from-image' })
+  return createImageBitmap(file, { imageOrientation: 'from-image' })
 }
 
 export async function loadImage(src: string): Promise<HTMLImageElement> {
@@ -71,19 +78,34 @@ async function getPreferredImageMime(): Promise<ImageMime> {
   return preferredImageMime
 }
 
-export interface ProcessedImage {
+export interface ProcessedGalleryImage {
   galleryBlob: Blob
-  miniBlob: Blob
-  miniDataUrl: string
   width: number
   height: number
 }
 
+export interface ProcessedImage extends ProcessedGalleryImage {
+  miniBlob: Blob
+  miniDataUrl: string
+}
+
+export function processImage(
+  image: HTMLImageElement | ImageBitmap,
+  maxLongSide?: number,
+  quality?: number,
+): Promise<ProcessedImage>
+export function processImage(
+  image: HTMLImageElement | ImageBitmap,
+  maxLongSide: number,
+  quality: number,
+  includeMini: false,
+): Promise<ProcessedGalleryImage>
 export async function processImage(
   image: HTMLImageElement | ImageBitmap,
   maxLongSide = 2048,
   quality = 0.8,
-): Promise<ProcessedImage> {
+  includeMini = true,
+): Promise<ProcessedImage | ProcessedGalleryImage> {
   const width = image.width
   const height = image.height
   if (width === 0 || height === 0) throw new Error('Invalid image')
@@ -100,6 +122,13 @@ export async function processImage(
   if (!galleryCtx) throw new Error('Canvas context unavailable')
   galleryCtx.drawImage(image, 0, 0, targetW, targetH)
 
+  const mimeType = await getPreferredImageMime()
+
+  if (!includeMini) {
+    const galleryBlob = await canvasToBlob(galleryCanvas, mimeType, quality)
+    return { galleryBlob, width, height }
+  }
+
   const miniScale = Math.min(1, 480 / Math.max(targetW, targetH))
   const miniW = Math.max(1, Math.round(targetW * miniScale))
   const miniH = Math.max(1, Math.round(targetH * miniScale))
@@ -110,7 +139,6 @@ export async function processImage(
   if (!miniCtx) throw new Error('Canvas context unavailable')
   miniCtx.drawImage(galleryCanvas, 0, 0, miniW, miniH)
 
-  const mimeType = await getPreferredImageMime()
   const [galleryBlob, miniBlob] = await Promise.all([
     canvasToBlob(galleryCanvas, mimeType, quality),
     canvasToBlob(miniCanvas, mimeType, quality),

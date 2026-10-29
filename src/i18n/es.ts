@@ -228,6 +228,10 @@
     pick: 'Elegir fotogramas',
     selected: (n: number) => (n === 1 ? '1 fotograma elegido' : `${n} fotogramas elegidos`),
     uploadingFrame: (i: number, n: number) => `Subiendo fotograma ${i} de ${n}...`,
+    creatingGif: 'Creando el GIF...',
+    uploadingOriginals: (done: number, total: number) =>
+      `Guardando originales ${done} de ${total} en segundo plano...`,
+    originalsError: 'Algunos originales no se han podido guardar. Los fotogramas siguen disponibles.',
     uploadError: 'No se han podido subir los fotogramas.',
     fps: 'Fotogramas por segundo',
     play: 'Reproducir',

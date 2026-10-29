@@ -7,7 +7,7 @@ import { useAuth } from '../features/auth/useAuth'
 import { ensureLoaded, isGalleryLoaded, saveSecuencia } from '../features/gallery/persistence'
 import { useGalleryData } from '../features/gallery/useGalleryData'
 import { enqueueSave } from '../features/gallery/saveQueue'
-import { uploadFrames } from '../features/gallery/pencilUpload'
+import { uploadFrames, type UploadStage } from '../features/gallery/pencilUpload'
 import { withUpdatedAt } from '../features/gallery/secuencias'
 import { downloadFileAsBlob } from '../features/drive/driveImageClient'
 import { friendlyError } from '../lib/errors/friendlyError'
@@ -30,8 +30,11 @@ export default function PencilTest() {
   const [index, setIndex] = useState(0)
   const [urls, setUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [stage, setStage] = useState<UploadStage | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [originalProgress, setOriginalProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [originalError, setOriginalError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const sec = secuencias.find((s) => s.id === currentSecId) || secuencias[0]
@@ -94,8 +97,11 @@ export default function PencilTest() {
   async function createFromFiles() {
     if (files.length === 0 || uploading) return
     setUploading(true)
+    setStage('frames')
     setProgress({ done: 0, total: files.length })
+    setOriginalProgress(null)
     setError(null)
+    setOriginalError(null)
     try {
       const token = await ensureToken()
       if (!isGalleryLoaded()) await ensureLoaded(token)
@@ -105,8 +111,9 @@ export default function PencilTest() {
         files,
         { id, titulo: titulo || 'Animación', fps: safeFps },
         (done, total) => setProgress({ done, total }),
+        setStage,
       )
-      const frames = uploaded.frames.map((u, i) => ({ id: u.id, orden: i, drive: u.drive }))
+      const frames = uploaded.frames.map((u) => ({ id: u.id, orden: u.orden, drive: u.drive }))
       const s = withUpdatedAt({
         schema: 1 as const,
         id,
@@ -123,11 +130,45 @@ export default function PencilTest() {
       void enqueueSave((saveToken) => saveSecuencia(saveToken, s)).catch(() => undefined)
       setFiles([])
       setCurrentSecId(s.id)
+
+      const persistLatest = () => {
+        const latest = useGalleryStore.getState().secuencias.find((secuencia) => secuencia.id === s.id)
+        if (latest) void enqueueSave((saveToken) => saveSecuencia(saveToken, latest)).catch(() => undefined)
+      }
+
+      setOriginalProgress({ done: 0, total: uploaded.frames.length })
+      void uploaded
+        .uploadOriginals({
+          shouldContinue: () => useGalleryStore.getState().secuencias.some((secuencia) => secuencia.id === s.id),
+          onFrameUploaded: (frameId, originalId) => {
+            const latest = useGalleryStore.getState().secuencias.find((secuencia) => secuencia.id === s.id)
+            if (!latest) return
+            updateSecuencia(s.id, {
+              frames: latest.frames.map((frame) =>
+                frame.id === frameId ? { ...frame, drive: { ...frame.drive, originalId } } : frame,
+              ),
+            })
+          },
+          onProgress: (done, total) => {
+            setOriginalProgress({ done, total })
+            if (done === total || done % 6 === 0) persistLatest()
+          },
+        })
+        .then(({ failed }) => {
+          setOriginalProgress(null)
+          if (failed > 0) setOriginalError(es.pencil.originalsError)
+        })
+        .catch((err) => {
+          console.error('Upload frame originals failed', err)
+          setOriginalProgress(null)
+          setOriginalError(friendlyError(err, es.pencil.originalsError))
+        })
     } catch (e) {
       console.error('Upload frames failed', e)
       setError(friendlyError(e, es.pencil.uploadError))
     } finally {
       setUploading(false)
+      setStage(null)
       setProgress(null)
     }
   }
@@ -193,10 +234,18 @@ export default function PencilTest() {
       </div>
       {progress && (
         <p className="text-sm text-[var(--muted)]">
-          {es.pencil.uploadingFrame(Math.min(progress.done + 1, progress.total), progress.total)}
+          {stage === 'gif'
+            ? es.pencil.creatingGif
+            : es.pencil.uploadingFrame(Math.min(progress.done + 1, progress.total), progress.total)}
+        </p>
+      )}
+      {originalProgress && (
+        <p className="text-sm text-[var(--muted)]">
+          {es.pencil.uploadingOriginals(originalProgress.done, originalProgress.total)}
         </p>
       )}
       {error && <p className="text-sm text-[#ff9db1]">{error}</p>}
+      {originalError && <p className="text-sm text-[#ffb86b]">{originalError}</p>}
 
       {state === 'error' && (
         <div className="panel p-4 text-center flex flex-col items-center gap-3">

@@ -1,7 +1,7 @@
 export interface Frame {
   id: string
   orden: number
-  drive: { originalId: string; galeriaId: string }
+  drive: { originalId?: string; galeriaId: string }
 }
 
 export interface Secuencia {
