@@ -35,7 +35,10 @@ vi.mock('./upload', () => ({
 
 import { ensureToken } from '../auth/googleAuth'
 import { uploadBlob } from '../drive/driveImageClient'
-import { uploadFrames } from './pencilUpload'
+import { encodeGif } from '../../lib/image/gifEncoder'
+import { processImage } from '../../lib/image/imageProcessor'
+import type { Secuencia } from './secuencias'
+import { uploadAppendedFrames, uploadFrames } from './pencilUpload'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -109,5 +112,48 @@ describe('uploadFrames', () => {
     for (const [token] of vi.mocked(uploadBlob).mock.calls) {
       expect(token).toBeTruthy()
     }
+  })
+
+  it('passes the loop preference to the gif encoder', async () => {
+    const files = [new File(['a'], 'frame-1.png', { type: 'image/png' })]
+
+    await uploadFrames(files, { id: 'secuencia-1', titulo: 'Mi animación', fps: 12, loop: false })
+
+    expect(encodeGif).toHaveBeenCalledWith([expect.any(Blob)], 12, false)
+  })
+})
+
+describe('uploadAppendedFrames', () => {
+  const sequence: Secuencia = {
+    schema: 1,
+    id: 'secuencia-1',
+    rev: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    titulo: 'Mi animación',
+    fps: 12,
+    bucle: true,
+    frames: [
+      { id: 'a', orden: 0, drive: { galeriaId: 'gal-a' } },
+      { id: 'b', orden: 1, drive: { galeriaId: 'gal-b' } },
+    ],
+    mainFileId: 'gif-1',
+    miniatura: '',
+  }
+
+  it('uploads only the new frames and keeps their order', async () => {
+    const file = new File(['c'], 'frame-3.png', { type: 'image/png' })
+
+    const result = await uploadAppendedFrames(sequence, [file])
+
+    expect(result.frames).toHaveLength(1)
+    expect(result.frames[0].orden).toBe(2)
+    expect(processImage).toHaveBeenCalledWith(expect.anything(), 1024, 0.72, false)
+    expect(encodeGif).not.toHaveBeenCalled()
+    expect(uploadBlob).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores an append with no files', async () => {
+    await expect(uploadAppendedFrames(sequence, [])).rejects.toThrow('No frames to upload')
+    expect(uploadBlob).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { uploadBlob } from './driveImageClient'
+import { updateBlob, uploadBlob } from './driveImageClient'
 import { onDriveAuthError } from './driveHttp'
 
 function response(status: number, body: unknown, headers?: Record<string, string>): Response {
@@ -43,6 +43,36 @@ describe('uploadBlob', () => {
       'Upload error: 403',
     )
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates an existing file with a media patch', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(response(200, { id: 'file-1', name: 'animacion.gif' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const blob = new Blob(['gif'], { type: 'image/gif' })
+
+    await expect(updateBlob('token', 'file-1', blob)).resolves.toEqual({ id: 'file-1', name: 'animacion.gif' })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(url).toContain('/files/file-1?uploadType=media')
+    expect(options.method).toBe('PATCH')
+    expect(options.headers['Content-Type']).toBe('image/gif')
+    expect(options.body).toBe(blob)
+  })
+
+  it('retries a rate-limited media patch', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(429, { error: 'rateLimitExceeded' }))
+      .mockResolvedValueOnce(response(200, { id: 'file-1', name: 'animacion.gif' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const update = updateBlob('token', 'file-1', new Blob(['gif'], { type: 'image/gif' }))
+    await vi.advanceTimersByTimeAsync(400)
+
+    await expect(update).resolves.toEqual({ id: 'file-1', name: 'animacion.gif' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('reports an expired session so cached folders can be refreshed', async () => {

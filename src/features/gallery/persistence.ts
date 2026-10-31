@@ -125,6 +125,11 @@ export async function trashColeccion(
   ])
 }
 
+export async function trashFrameFiles(token: string, frame: Secuencia['frames'][number]): Promise<void> {
+  const ids = [frame.drive.originalId, frame.drive.galeriaId].filter((x): x is string => Boolean(x))
+  await Promise.allSettled(ids.map((fileId) => trashFile(token, fileId)))
+}
+
 export async function trashSecuencia(token: string, secuencia: Secuencia): Promise<void> {
   const folders = await getFolderIds(token)
   const ids = secuencia.frames

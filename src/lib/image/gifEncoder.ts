@@ -25,7 +25,7 @@ function samplePalette(
   return quantize(combined, MAX_GIF_COLORS)
 }
 
-export async function encodeGif(frames: Blob[], fps: number): Promise<Blob> {
+export async function encodeGif(frames: Blob[], fps: number, loop = true): Promise<Blob> {
   if (frames.length === 0) throw new Error('No frames to encode')
 
   const bitmaps = await Promise.all(frames.map((blob) => createImageBitmap(blob)))
@@ -49,7 +49,7 @@ export async function encodeGif(frames: Blob[], fps: number): Promise<Blob> {
       ctx.drawImage(bitmap, 0, 0, width, height)
       const { data } = ctx.getImageData(0, 0, width, height)
       const index = applyPalette(data, palette)
-      gif.writeFrame(index, width, height, { palette, delay, repeat: 0 })
+      gif.writeFrame(index, width, height, { palette, delay, repeat: loop ? 0 : -1 })
     }
 
     gif.finish()

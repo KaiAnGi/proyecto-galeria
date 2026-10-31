@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from 'react'
 import { useGalleryStore } from './store'
 import { enqueueSave } from './saveQueue'
-import { trashColeccion, trashEntrega, trashObra, trashSecuencia } from './persistence'
+import { trashColeccion, trashEntrega, trashFrameFiles, trashObra, trashSecuencia } from './persistence'
+import { removeFrame, sortFrames } from './sequenceFrames'
+import { persistLatestSequence } from './sequenceSave'
+import { scheduleGifRefresh } from './gifRefreshScheduler'
+import { refreshSequenceCover } from './sequenceCover'
 import type { Coleccion, Entrega, Obra } from './store'
-import type { Secuencia } from './secuencias'
+import type { Frame, Secuencia } from './secuencias'
 
 interface TrashEntry {
   key: string
@@ -126,6 +130,49 @@ export function queueSecuenciaTrash(secuencia: Secuencia): void {
     key: `secuencia:${secuencia.id}`,
     restore: () => useGalleryStore.getState().addSecuencia(secuencia),
     commit: (token) => trashSecuencia(token, secuencia),
+  })
+}
+
+export function queueFrameTrash(secuencia: Secuencia, frame: Frame): void {
+  const current = useGalleryStore.getState().secuencias.find((item) => item.id === secuencia.id)
+  if (!current || current.frames.length <= 1) return
+
+  const ordered = sortFrames(current.frames)
+  const index = ordered.findIndex((item) => item.id === frame.id)
+  if (index < 0) return
+
+  const previousId = ordered[index - 1]?.id
+  const nextId = ordered[index + 1]?.id
+  const firstBefore = ordered[0]?.id
+  const frames = removeFrame(current.frames, frame.id)
+  const firstAfter = sortFrames(frames)[0]?.id
+  useGalleryStore.getState().updateSecuencia(secuencia.id, { frames })
+  persistLatestSequence(secuencia.id)
+  scheduleGifRefresh(secuencia.id)
+  if (firstBefore !== firstAfter) void refreshSequenceCover(secuencia.id)
+
+  queueTrash({
+    key: `frame:${secuencia.id}:${frame.id}`,
+    restore: () => {
+      const latest = useGalleryStore.getState().secuencias.find((item) => item.id === secuencia.id)
+      if (!latest) return
+      const restored = sortFrames(latest.frames)
+      const previousIndex = previousId ? restored.findIndex((item) => item.id === previousId) : -1
+      const nextIndex = nextId ? restored.findIndex((item) => item.id === nextId) : -1
+      const insertAt =
+        previousIndex >= 0
+          ? previousIndex + 1
+          : nextIndex >= 0
+            ? nextIndex
+            : Math.min(index, restored.length)
+      restored.splice(insertAt, 0, frame)
+      const nextFrames = restored.map((item, itemIndex) => ({ ...item, orden: itemIndex }))
+      useGalleryStore.getState().updateSecuencia(secuencia.id, { frames: nextFrames })
+      persistLatestSequence(secuencia.id)
+      scheduleGifRefresh(secuencia.id)
+      if (firstBefore !== nextFrames[0]?.id) void refreshSequenceCover(secuencia.id)
+    },
+    commit: (token) => trashFrameFiles(token, frame),
   })
 }
 

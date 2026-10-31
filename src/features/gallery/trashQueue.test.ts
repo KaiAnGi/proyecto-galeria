@@ -9,14 +9,35 @@ vi.mock('./persistence', () => ({
   trashColeccion: vi.fn(async () => undefined),
   trashSecuencia: vi.fn(async () => undefined),
   trashEntrega: vi.fn(async () => undefined),
+  trashFrameFiles: vi.fn(async () => undefined),
+}))
+
+vi.mock('./sequenceSave', () => ({
+  persistLatestSequence: vi.fn(),
+}))
+
+vi.mock('./gifRefreshScheduler', () => ({
+  scheduleGifRefresh: vi.fn(),
+}))
+
+vi.mock('./sequenceCover', () => ({
+  refreshSequenceCover: vi.fn(),
 }))
 
 import { enqueueSave } from './saveQueue'
 import { trashColeccion } from './persistence'
 import { useGalleryStore } from './store'
 import type { Coleccion, Obra } from './store'
-import type { Secuencia } from './secuencias'
-import { flushTrash, getTrashSnapshot, queueColeccionTrash, queueTrash, undoTrash } from './trashQueue'
+import type { Frame, Secuencia } from './secuencias'
+import { sortFrames } from './sequenceFrames'
+import {
+  flushTrash,
+  getTrashSnapshot,
+  queueColeccionTrash,
+  queueFrameTrash,
+  queueTrash,
+  undoTrash,
+} from './trashQueue'
 
 const coleccion: Coleccion = {
   schema: 1,
@@ -115,6 +136,28 @@ describe('trashQueue', () => {
     expect(state.colecciones.map((c) => c.id)).toEqual(['col-1'])
     expect(state.obras[0].coleccionIds).toEqual(['col-1', 'col-2'])
     expect(state.secuencias[0].coleccionIds).toEqual(['col-1'])
+  })
+
+  it('restores several deleted frames in their original order', () => {
+    const frames: Frame[] = ['a', 'b', 'c'].map((id, orden) => ({
+      id,
+      orden,
+      drive: { galeriaId: `gal-${id}` },
+    }))
+    const withFrames = { ...secuencia, frames }
+    useGalleryStore.getState().hydrate({ obras: [], colecciones: [], secuencias: [withFrames], entregas: [] })
+
+    queueFrameTrash(withFrames, frames[0])
+    queueFrameTrash(withFrames, frames[1])
+    expect(sortFrames(useGalleryStore.getState().secuencias[0].frames).map((frame) => frame.id)).toEqual(['c'])
+
+    undoTrash()
+
+    expect(sortFrames(useGalleryStore.getState().secuencias[0].frames).map((frame) => frame.id)).toEqual([
+      'a',
+      'b',
+      'c',
+    ])
   })
 
   it('trashes the collection with the works and animations it linked', async () => {

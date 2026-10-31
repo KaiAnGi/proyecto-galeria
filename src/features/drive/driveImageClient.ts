@@ -86,6 +86,30 @@ export function uploadJson(
   return uploadMultipart(token, blob, name, parents, appProps)
 }
 
+export async function updateBlob(token: string, fileId: string, blob: Blob): Promise<UploadedFile> {
+  const url = DRIVE_UPLOAD + '/files/' + fileId + '?uploadType=media&fields=id,name,mimeType,modifiedTime'
+  const contentType = blob.type || 'application/octet-stream'
+
+  for (let attempt = 0; attempt < MAX_UPLOAD_ATTEMPTS; attempt += 1) {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': contentType },
+      body: blob,
+    })
+    if (res.ok) return res.json()
+    if (attempt < MAX_UPLOAD_ATTEMPTS - 1 && (await isRateLimitResponse(res))) {
+      const retryAfter = Number(res.headers.get('Retry-After'))
+      const delay = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : RETRY_BASE_MS * 2 ** attempt
+      await wait(delay)
+      continue
+    }
+    reportDriveAuthErrorIfNeeded(res)
+    throw new Error('Update error: ' + res.status)
+  }
+
+  throw new Error('Update error: too many attempts')
+}
+
 export async function findFileByName(
   token: string,
   name: string,

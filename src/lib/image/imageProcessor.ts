@@ -1,5 +1,3 @@
-import heic2any from 'heic2any'
-
 type ImageMime = 'image/webp' | 'image/jpeg'
 
 export async function readFileAsDataUrl(blob: Blob): Promise<string> {
@@ -19,6 +17,7 @@ export async function fileToBitmap(file: File): Promise<ImageBitmap> {
     try {
       return await createImageBitmap(file, { imageOrientation: 'from-image' })
     } catch {
+      const { default: heic2any } = await import('heic2any')
       const converted = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob
       return createImageBitmap(converted, { imageOrientation: 'from-image' })
     }
@@ -146,6 +145,27 @@ export async function processImage(
   const miniDataUrl = await readFileAsDataUrl(miniBlob)
 
   return { galleryBlob, miniBlob, miniDataUrl, width, height }
+}
+
+export async function blobToThumbnailDataUrl(blob: Blob, maxLongSide = 320, quality = 0.72): Promise<string> {
+  const bitmap = await createImageBitmap(blob)
+  try {
+    const longSide = Math.max(bitmap.width, bitmap.height)
+    const scale = longSide <= maxLongSide ? 1 : maxLongSide / longSide
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Canvas context unavailable')
+    context.drawImage(bitmap, 0, 0, width, height)
+    const mimeType = await getPreferredImageMime()
+    const thumbnail = await canvasToBlob(canvas, mimeType, quality)
+    return readFileAsDataUrl(thumbnail)
+  } finally {
+    bitmap.close()
+  }
 }
 
 export async function resizeToMaxDimensions(

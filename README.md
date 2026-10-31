@@ -31,10 +31,13 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Añadir versiones (imagen/GIF) con tipo, etapa y guardado en Drive.
 
 ### Fase 3 — Animación y clase (hecha)
-- Pencil test: subida de fotogramas en orden, reproducción de 6 a 24 fps con bucle,
-  papel cebolla (fotograma anterior al 40 %) y reordenación de fotogramas.
-- Persistencia de secuencias en Drive (`_interno/secuencias/secuencia-<id>.json`).
-- Cada animación genera además un GIF con los fotogramas en "Sin colección".
+- Animaciones con biblioteca (`#/animaciones`) y editor (`#/animaciones/:id`); `/pencil-test` redirige a la biblioteca.
+- Creación guiada en un panel aparte: archivo, arrastrar, pegar o cámara; vista previa, reordenación y borrado local antes de subir.
+- Editor con transporte fijo, reproducción de 6 a 24 fps con presets, bucle, contador, barra de progreso y papel cebolla al 40 % solo en pausa.
+- Línea de tiempo con miniaturas por `frame.id`, selección visible, desplazamiento automático, reordenación con Pointer Events o botones y adición de fotogramas.
+- Quitar un fotograma usa la papelera y el "Deshacer" global de 7 s; nunca se puede dejar una animación sin fotogramas. Si cambia el primero, se actualiza la portada.
+- Persistencia de secuencias en Drive (`_interno/secuencias/secuencia-<id>.json`) y firma `gifSignature` para detectar un GIF desfasado.
+- Cada animación genera un GIF con los fotogramas en "Sin colección"; al editar se regenera y se actualiza el archivo existente (con subida de reemplazo si el PATCH falla). Los originales nuevos se suben en segundo plano con progreso visible.
 - Subida de GIF y vídeo (MP4/MOV/WebM): el original en `originales`, la miniatura en
   `miniaturas`; en la ficha de la obra, reproductor con reproducir/pausa, velocidad
   (0,25x–2x) y paso de fotograma.
@@ -64,9 +67,9 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (103 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, colas de guardado y borrado, ZIP, subida de fotogramas y originales diferidos, media y filtros).
+- Unitarias con Vitest: `npm run test` (129 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, colas de guardado y borrado, GIF y portada, tareas en segundo plano, ZIP, subida de fotogramas y originales diferidos, media y filtros).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
-- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
+- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Incluye la creación de una animación hasta su editor. La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
 
 ## Pendiente
 - Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popups, EXIF, descarga del ZIP e instalación PWA.
