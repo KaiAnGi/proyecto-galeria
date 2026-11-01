@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import type { Frame } from './secuencias'
 import {
   appendFrames,
-  gifSignature,
   moveFrame,
   normalizeFrames,
   removeFrame,
@@ -59,18 +58,5 @@ describe('sequenceFrames', () => {
     expect(sequenceDuration([frame('a', 0)], 0)).toBe(1)
   })
 
-  it('builds a signature that changes with fps, loop or frame order', () => {
-    const frames = [frame('a', 0), frame('b', 1)]
 
-    expect(gifSignature({ fps: 12, bucle: true, frames })).toBe('12:1:a@0,b@1')
-    expect(gifSignature({ fps: 24, bucle: true, frames })).not.toBe(
-      gifSignature({ fps: 12, bucle: true, frames }),
-    )
-    expect(gifSignature({ fps: 12, bucle: false, frames })).not.toBe(
-      gifSignature({ fps: 12, bucle: true, frames }),
-    )
-    expect(gifSignature({ fps: 12, bucle: true, frames: moveFrame(frames, 0, 1) })).not.toBe(
-      gifSignature({ fps: 12, bucle: true, frames }),
-    )
-  })
 })

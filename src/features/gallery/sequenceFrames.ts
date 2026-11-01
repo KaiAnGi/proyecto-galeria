@@ -1,4 +1,4 @@
-import type { Frame, Secuencia } from './secuencias'
+import type { Frame } from './secuencias'
 
 export function sortFrames(frames: Frame[]): Frame[] {
   return [...frames].sort((a, b) => a.orden - b.orden)
@@ -29,9 +29,4 @@ export function removeFrame(frames: Frame[], frameId: string): Frame[] {
 export function sequenceDuration(frames: Frame[], fps: number): number {
   if (frames.length === 0) return 0
   return frames.length / Math.min(24, Math.max(1, fps))
-}
-
-export function gifSignature(sequence: Pick<Secuencia, 'fps' | 'bucle' | 'frames'>): string {
-  const ordered = sortFrames(sequence.frames)
-  return `${sequence.fps}:${sequence.bucle ? 1 : 0}:${ordered.map((frame) => `${frame.id}@${frame.orden}`).join(',')}`
 }

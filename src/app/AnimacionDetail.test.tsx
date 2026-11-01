@@ -3,9 +3,9 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import type { Secuencia } from '../features/gallery/secuencias'
-import { queueFrameTrash, queueSecuenciaTrash } from '../features/gallery/trashQueue'
-import { persistLatestSequence } from '../features/gallery/sequenceSave'
-import { scheduleGifRefresh } from '../features/gallery/gifRefreshScheduler'
+import { queueSecuenciaTrash } from '../features/gallery/trashQueue'
+import { useSequenceDrafts } from '../features/gallery/sequenceDrafts'
+import { saveSequenceDraft } from '../features/gallery/sequenceSave'
 import AnimacionDetail from './AnimacionDetail'
 
 vi.mock('../features/gallery/useGalleryData', () => ({
@@ -18,20 +18,11 @@ vi.mock('../features/gallery/useGalleryData', () => ({
 }))
 
 vi.mock('../features/gallery/trashQueue', () => ({
-  queueFrameTrash: vi.fn(),
   queueSecuenciaTrash: vi.fn(),
 }))
 
 vi.mock('../features/gallery/sequenceSave', () => ({
-  persistLatestSequence: vi.fn(),
-}))
-
-vi.mock('../features/gallery/gifRefreshScheduler', () => ({
-  scheduleGifRefresh: vi.fn(),
-}))
-
-vi.mock('../features/gallery/sequenceCover', () => ({
-  refreshSequenceCover: vi.fn(async () => undefined),
+  saveSequenceDraft: vi.fn(),
 }))
 
 const sequence: Secuencia = {
@@ -46,8 +37,7 @@ const sequence: Secuencia = {
     { id: 'a', orden: 0, drive: { galeriaId: 'gal-a' } },
     { id: 'b', orden: 1, drive: { galeriaId: 'gal-b' } },
   ],
-  mainFileId: 'gif-1',
-  gifSignature: '12:1:a@0,b@1',
+  mainFileId: 'video-1',
   miniatura: '',
 }
 
@@ -63,6 +53,7 @@ function renderEditor() {
 }
 
 beforeEach(() => {
+  useSequenceDrafts.setState({ drafts: {} })
   useGalleryStore.getState().hydrate({ secuencias: [sequence], obras: [], colecciones: [], entregas: [] })
 })
 
@@ -72,25 +63,34 @@ afterEach(() => {
 })
 
 describe('AnimacionDetail', () => {
-  it('shows the title, transport and timeline', () => {
+  it('shows the title, transport, timeline and save action', async () => {
     renderEditor()
 
-    expect(screen.getByDisplayValue('Olas')).toBeTruthy()
+    expect(await screen.findByDisplayValue('Olas')).toBeTruthy()
     expect(screen.getByText('Fotograma 1 de 2')).toBeTruthy()
     expect(screen.getAllByLabelText('Quitar este fotograma')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: /guardar animación/i })).toBeTruthy()
     expect(screen.getByRole('link', { name: /volver/i }).getAttribute('href')).toBe('/animaciones')
   })
 
-  it('queues the selected frame for the trash', () => {
+  it('removes a frame locally with an undo action', async () => {
     renderEditor()
+    await screen.findByDisplayValue('Olas')
 
     fireEvent.click(screen.getAllByLabelText('Quitar este fotograma')[0])
 
-    expect(queueFrameTrash).toHaveBeenCalledWith(expect.objectContaining({ id: 'sec-1' }), expect.objectContaining({ id: 'a' }))
+    expect(screen.getAllByLabelText('Quitar este fotograma')).toHaveLength(1)
+    expect(screen.getByText(/fotograma quitado/i)).toBeTruthy()
+    expect(queueSecuenciaTrash).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: /deshacer/i }))
+
+    expect(screen.getAllByLabelText('Quitar este fotograma')).toHaveLength(2)
   })
 
-  it('deletes the whole animation and returns to the library', () => {
+  it('deletes the whole animation and returns to the library', async () => {
     renderEditor()
+    await screen.findByDisplayValue('Olas')
 
     fireEvent.click(screen.getByLabelText('Borrar animación'))
 
@@ -98,29 +98,39 @@ describe('AnimacionDetail', () => {
     expect(screen.getByText('Biblioteca')).toBeTruthy()
   })
 
-  it('saves the title after the debounce and refreshes the gif when loop changes', () => {
-    vi.useFakeTimers()
+  it('keeps edits local until the user saves the animation', async () => {
+    vi.mocked(saveSequenceDraft).mockResolvedValue({
+      sequence: { ...sequence, rev: 2, titulo: 'Nuevo título' },
+      frames: sequence.frames,
+    })
     renderEditor()
+    await screen.findByDisplayValue('Olas')
 
     fireEvent.change(screen.getByDisplayValue('Olas'), { target: { value: 'Nuevo título' } })
-    act(() => {
-      vi.advanceTimersByTime(800)
+    fireEvent.click(screen.getByRole('button', { name: /bucle/i }))
+
+    expect(screen.getByText('Cambios sin guardar')).toBeTruthy()
+    expect(saveSequenceDraft).not.toHaveBeenCalled()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /guardar animación/i }))
     })
-    expect(persistLatestSequence).toHaveBeenCalledWith('sec-1')
 
-    const loop = screen.getByRole('button', { name: /bucle/i })
-    fireEvent.click(loop)
-
-    expect(loop.getAttribute('aria-pressed')).toBe('false')
-    expect(scheduleGifRefresh).toHaveBeenCalledWith('sec-1')
+    expect(saveSequenceDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'sec-1', titulo: 'Nuevo título', bucle: false }),
+      expect.any(Function),
+    )
+    expect(await screen.findByText('Animación guardada')).toBeTruthy()
   })
 
-  it('toggles onion skin without saving', () => {
+  it('toggles onion skin without marking changes', async () => {
     renderEditor()
+    await screen.findByDisplayValue('Olas')
     const onion = screen.getByRole('button', { name: /papel cebolla/i })
 
     fireEvent.click(onion)
 
     expect(onion.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Animación guardada')).toBeTruthy()
   })
 })

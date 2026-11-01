@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { es } from '../../i18n/es'
 import type { FrameMedia } from '../../features/gallery/useSequenceMedia'
-import type { Frame } from '../../features/gallery/secuencias'
+import type { DraftFrame } from '../../features/gallery/sequenceDrafts'
 import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, ImagesIcon, TrashIcon } from '../Icons'
 
 interface FrameTimelineProps {
-  frames: Frame[]
+  frames: DraftFrame[]
   currentIndex: number
   media: Record<string, FrameMedia>
   disabled: boolean
   onSelect: (index: number) => void
   onMove: (from: number, to: number) => void
-  onDelete: (frame: Frame) => void
+  onDelete: (frame: DraftFrame) => void
   onAddFiles: (files: File[]) => void
 }
 

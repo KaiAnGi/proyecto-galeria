@@ -14,7 +14,8 @@ export interface Secuencia {
   bucle: boolean
   frames: Frame[]
   mainFileId?: string
-  gifSignature?: string
+  folderId?: string
+  videoMime?: string
   miniatura: string
   coleccionIds?: string[]
 }

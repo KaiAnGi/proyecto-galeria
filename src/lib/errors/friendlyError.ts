@@ -8,6 +8,7 @@ export function friendlyError(e: unknown, fallback: string = es.errors.unexpecte
   const msg = e.message
 
   if (NETWORK_RE.test(msg)) return es.errors.network
+  if (/video recording/i.test(msg)) return es.pencil.videoUnavailable
 
   const status = HTTP_ERROR_RE.exec(msg)?.[1]
   if (status === '401' || status === '403') return es.errors.session

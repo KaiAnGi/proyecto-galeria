@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { ulid } from 'ulidx'
-import { ensureToken } from '../../features/auth/googleAuth'
-import { ensureLoaded, isGalleryLoaded } from '../../features/gallery/persistence'
-import { useGalleryStore } from '../../features/gallery/store'
-import { uploadFrames, type UploadStage } from '../../features/gallery/pencilUpload'
-import { gifSignature } from '../../features/gallery/sequenceFrames'
-import { persistLatestSequence } from '../../features/gallery/sequenceSave'
-import { startOriginalUploads } from '../../features/gallery/originalUploads'
-import { withUpdatedAt, type Secuencia } from '../../features/gallery/secuencias'
+import { createDraftFromFiles, useSequenceDrafts } from '../../features/gallery/sequenceDrafts'
 import { friendlyError } from '../../lib/errors/friendlyError'
 import { es } from '../../i18n/es'
 import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, ImagesIcon, PlusIcon, TrashIcon } from '../Icons'
@@ -28,12 +21,11 @@ function isImage(file: File): boolean {
 }
 
 export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPanelProps) {
-  const addSecuencia = useGalleryStore((state) => state.addSecuencia)
+  const putDraft = useSequenceDrafts((state) => state.putDraft)
   const [files, setFiles] = useState<SelectedFile[]>([])
   const [titulo, setTitulo] = useState<string>(es.pencil.defaultTitle)
   const [fps, setFps] = useState(12)
-  const [uploading, setUploading] = useState(false)
-  const [stage, setStage] = useState<UploadStage | null>(null)
+  const [preparing, setPreparing] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -105,48 +97,26 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
     addFiles(Array.from(event.dataTransfer.files))
   }
 
-  async function create() {
-    if (files.length === 0 || uploading) return
-    setUploading(true)
-    setStage('frames')
+  async function prepare() {
+    if (files.length === 0 || preparing) return
+    setPreparing(true)
     setProgress({ done: 0, total: files.length })
     setError(null)
     try {
-      const token = await ensureToken()
-      if (!isGalleryLoaded()) await ensureLoaded(token)
-      const id = ulid()
       const safeFps = Number.isFinite(fps) ? Math.min(24, Math.max(6, fps)) : 12
       const safeTitle = titulo.trim() || es.pencil.defaultTitle
-      const uploaded = await uploadFrames(
+      const draft = await createDraftFromFiles(
         files.map((item) => item.file),
-        { id, titulo: safeTitle, fps: safeFps, loop: true },
+        { titulo: safeTitle, fps: safeFps },
         (done, total) => setProgress({ done, total }),
-        setStage,
       )
-      const frames = uploaded.frames.map((item) => ({ id: item.id, orden: item.orden, drive: item.drive }))
-      const base = withUpdatedAt({
-        schema: 1 as const,
-        id,
-        rev: 1,
-        titulo: safeTitle,
-        fps: safeFps,
-        bucle: true,
-        frames,
-        mainFileId: uploaded.mainFileId,
-        miniatura: uploaded.frames[0]?.miniDataUrl || '',
-        coleccionIds: [],
-      })
-      const sequence: Secuencia = { ...base, gifSignature: gifSignature(base) }
-      addSecuencia(sequence)
-      persistLatestSequence(sequence.id)
-      startOriginalUploads(sequence.id, sequence.titulo, uploaded)
-      onCreated(sequence.id)
+      putDraft(draft)
+      onCreated(draft.id)
     } catch (e) {
-      console.error('Create animation failed', e)
-      setError(friendlyError(e, es.pencil.uploadError))
+      console.error('Prepare animation failed', e)
+      setError(friendlyError(e, es.pencil.prepareError))
     } finally {
-      setUploading(false)
-      setStage(null)
+      setPreparing(false)
       setProgress(null)
     }
   }
@@ -161,7 +131,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
         <button
           type="button"
           onClick={onClose}
-          disabled={uploading}
+          disabled={preparing}
           aria-label={es.app.dismiss}
           className="min-w-11 min-h-11 rounded-full text-[var(--muted)]"
         >
@@ -186,7 +156,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
           accept="image/*"
           multiple
           className="hidden"
-          disabled={uploading}
+          disabled={preparing}
           onChange={handlePick}
         />
         <input
@@ -196,14 +166,14 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
           capture="environment"
           multiple
           className="hidden"
-          disabled={uploading}
+          disabled={preparing}
           onChange={handlePick}
         />
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={preparing}
             className="btn btn-soft"
           >
             <ImagesIcon className="w-5 h-5" />
@@ -212,7 +182,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
           <button
             type="button"
             onClick={() => cameraInputRef.current?.click()}
-            disabled={uploading}
+            disabled={preparing}
             className="btn btn-soft"
           >
             <CameraIcon className="w-5 h-5" />
@@ -243,7 +213,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
                     <button
                       type="button"
                       onClick={() => moveFile(index, -1)}
-                      disabled={index === 0 || uploading}
+                      disabled={index === 0 || preparing}
                       aria-label={es.pencil.moveBack}
                       className="btn btn-soft min-w-11 min-h-11 px-2"
                     >
@@ -252,7 +222,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
                     <button
                       type="button"
                       onClick={() => moveFile(index, 1)}
-                      disabled={index === files.length - 1 || uploading}
+                      disabled={index === files.length - 1 || preparing}
                       aria-label={es.pencil.moveForward}
                       className="btn btn-soft min-w-11 min-h-11 px-2"
                     >
@@ -262,7 +232,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
                   <button
                     type="button"
                     onClick={() => removeFile(item.key)}
-                    disabled={uploading}
+                    disabled={preparing}
                     aria-label={es.pencil.removeSelected}
                     className="btn btn-soft min-w-11 min-h-11 px-2"
                   >
@@ -283,7 +253,7 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
             onChange={(event) => setTitulo(event.target.value)}
             placeholder={es.pencil.titlePlaceholder}
             className="field"
-            disabled={uploading}
+            disabled={preparing}
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -295,26 +265,24 @@ export default function NewAnimationPanel({ onCreated, onClose }: NewAnimationPa
             max={24}
             onChange={(event) => setFps(Number(event.target.value))}
             className="field w-24"
-            disabled={uploading}
+            disabled={preparing}
           />
         </label>
         <button
           type="button"
-          onClick={create}
-          disabled={uploading || files.length === 0}
+          onClick={() => void prepare()}
+          disabled={preparing || files.length === 0}
           className="btn btn-primary"
         >
           <PlusIcon className="w-5 h-5" />
-          {uploading ? es.pencil.creating : es.pencil.createWithCount(files.length)}
+          {preparing ? es.pencil.preparing : es.pencil.createWithCount(files.length)}
         </button>
       </div>
 
       {progress && (
         <div role="status" className="flex flex-col gap-2">
           <p className="text-sm text-[var(--muted)]">
-            {stage === 'gif'
-              ? es.pencil.creatingGif
-              : es.pencil.uploadingFrame(Math.min(progress.done + 1, progress.total), progress.total)}
+            {es.pencil.preparingFrame(Math.min(progress.done + 1, progress.total), progress.total)}
           </p>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]">
             <div

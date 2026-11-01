@@ -20,6 +20,11 @@ describe('friendlyError', () => {
     expect(friendlyError(new Error('Raíz no encontrada'))).toBe(es.errors.notFound)
   })
 
+  it('explains when the browser cannot record video', () => {
+    expect(friendlyError(new Error('Video recording unavailable'))).toBe(es.pencil.videoUnavailable)
+    expect(friendlyError(new Error('Video recording failed'))).toBe(es.pencil.videoUnavailable)
+  })
+
   it('falls back for anything else', () => {
     expect(friendlyError(new Error('Upload error: 500'))).toBe(es.errors.unexpected)
     expect(friendlyError(new Error('boom'))).toBe(es.errors.unexpected)

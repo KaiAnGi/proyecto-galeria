@@ -55,6 +55,16 @@ export function ClipboardIcon({ className }: IconProps) {
   )
 }
 
+export function SaveIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M5 3.5h11l3 3V20.5H5v-17z" />
+      <path d="M8.5 3.5v6h7v-6" />
+      <path d="M8.5 20.5v-6h7v6" />
+    </svg>
+  )
+}
+
 export function DownloadIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

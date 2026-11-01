@@ -56,7 +56,7 @@ export async function createFolder(
   return res.json()
 }
 
-async function renameFile(token: string, fileId: string, name: string): Promise<void> {
+export async function renameFile(token: string, fileId: string, name: string): Promise<void> {
   const url = DRIVE_API + '/files/' + fileId + '?fields=id,name'
   const res = await fetch(url, {
     method: 'PATCH',

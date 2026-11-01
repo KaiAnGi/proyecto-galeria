@@ -222,25 +222,21 @@
     count: (n: number) => (n === 1 ? '1 animación' : `${n} animaciones`),
     newAnimation: 'Nueva animación',
     createTitle: 'Nueva animación',
-    createHint: 'Elige los fotogramas en el orden en que quieres verlos.',
+    createHint: 'Elige los fotogramas. Después podrás verlos y guardar el vídeo cuando estés lista.',
     createWithCount: (n: number) =>
       n === 0
-        ? 'Crear animación'
+        ? 'Abrir editor'
         : n === 1
-          ? 'Crear animación (1 fotograma)'
-          : `Crear animación (${n} fotogramas)`,
-    creating: 'Subiendo...',
+          ? 'Abrir editor (1 fotograma)'
+          : `Abrir editor (${n} fotogramas)`,
+    preparing: 'Preparando...',
+    preparingFrame: (i: number, n: number) => `Preparando fotograma ${i} de ${n}...`,
+    prepareError: 'No se han podido preparar los fotogramas.',
     pick: 'Elegir fotogramas',
     addFromCamera: 'Hacer fotos',
     dropHint: 'También puedes arrastrar fotos aquí o pegarlas.',
     selected: (n: number) => (n === 1 ? '1 fotograma elegido' : `${n} fotogramas elegidos`),
     removeSelected: 'Quitar',
-    uploadingFrame: (i: number, n: number) => `Subiendo fotograma ${i} de ${n}...`,
-    creatingGif: 'Creando el GIF...',
-    uploadingOriginals: (done: number, total: number) =>
-      total > 0 ? `Guardando originales ${done} de ${total}...` : 'Guardando originales...',
-    originalsError: 'Algunos originales no se han podido guardar. Los fotogramas siguen disponibles.',
-    uploadError: 'No se han podido subir los fotogramas.',
     addFramesError: 'No se han podido añadir los fotogramas.',
     fps: 'Fotogramas por segundo',
     fpsShort: (n: number) => `${n} fps`,
@@ -252,6 +248,18 @@
     onion: 'Papel cebolla',
     titlePlaceholder: 'Título',
     titleLabel: 'Título de la animación',
+    save: 'Guardar animación',
+    saving: 'Guardando...',
+    saved: 'Animación guardada',
+    unsaved: 'Cambios sin guardar',
+    saveHint: 'El vídeo y los fotogramas se guardan en una carpeta con el nombre de la animación.',
+    savePreparing: 'Preparando los fotogramas...',
+    saveVideo: (done: number, total: number) => `Creando el vídeo (${done} de ${total})...`,
+    saveFrames: (done: number, total: number) => `Guardando fotograma ${done} de ${total}...`,
+    saveFinishing: 'Terminando de guardar...',
+    saveError: 'No se ha podido guardar la animación.',
+    videoUnavailable: 'Este navegador no ha podido crear el vídeo. Prueba a actualizarlo o usa Chrome.',
+    frameRemoved: 'Fotograma quitado. Se aplicará al guardar.',
     empty: 'Todavía no hay animaciones.',
     emptySub: 'Elige unos cuantos fotogramas y míralos cobrar vida.',
     emptyCta: 'Crear mi primera animación',
@@ -269,14 +277,8 @@
     moveBack: 'Mover antes',
     moveForward: 'Mover después',
     deleteFrame: 'Quitar este fotograma',
-    gifOutdated: 'El GIF no coincide con los fotogramas actuales.',
-    updateGif: 'Actualizar GIF',
     notFound: 'Esa animación no existe o se ha borrado.',
     loadFramesError: 'No se ha podido cargar este fotograma.',
-    gifLoading: 'Preparando el GIF...',
-    gifEncoding: 'Creando el GIF...',
-    gifUploading: 'Guardando el GIF...',
-    gifError: 'No se ha podido actualizar el GIF. Los fotogramas siguen guardados.',
   },
 } as const
 

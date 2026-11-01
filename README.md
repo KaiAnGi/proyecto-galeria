@@ -32,12 +32,12 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 
 ### Fase 3 — Animación y clase (hecha)
 - Animaciones con biblioteca (`#/animaciones`) y editor (`#/animaciones/:id`); `/pencil-test` redirige a la biblioteca.
-- Creación guiada en un panel aparte: archivo, arrastrar, pegar o cámara; vista previa, reordenación y borrado local antes de subir.
+- Creación guiada en un panel aparte: archivo, arrastrar, pegar o cámara; vista previa, reordenación y borrado local antes de abrir el editor.
 - Editor con transporte fijo, reproducción de 6 a 24 fps con presets, bucle, contador, barra de progreso y papel cebolla al 40 % solo en pausa.
 - Línea de tiempo con miniaturas por `frame.id`, selección visible, desplazamiento automático, reordenación con Pointer Events o botones y adición de fotogramas.
-- Quitar un fotograma usa la papelera y el "Deshacer" global de 7 s; nunca se puede dejar una animación sin fotogramas. Si cambia el primero, se actualiza la portada.
-- Persistencia de secuencias en Drive (`_interno/secuencias/secuencia-<id>.json`) y firma `gifSignature` para detectar un GIF desfasado.
-- Cada animación genera un GIF con los fotogramas en "Sin colección"; al editar se regenera y se actualiza el archivo existente (con subida de reemplazo si el PATCH falla). Los originales nuevos se suben en segundo plano con progreso visible.
+- Todo se edita sobre un borrador local: cambios, fotogramas nuevos y borrados no tocan Drive hasta pulsar "Guardar animación". Quitar un fotograma se puede deshacer durante 7 s y nunca se puede dejar una animación sin fotogramas.
+- Al guardar se crea un vídeo con `canvas.captureStream` y `MediaRecorder`, y una carpeta visible en la raíz con el título de la animación. Dentro quedan el vídeo, `Fotogramas/` y `Originales/`; el JSON de la secuencia sigue en `_interno/secuencias/secuencia-<id>.json`.
+- Si el primer fotograma no tiene vídeo previo, la portada se genera a partir de la imagen procesada. Los fotogramas y originales que ya estaban en Drive se mueven a las subcarpetas sin volver a subirse.
 - Subida de GIF y vídeo (MP4/MOV/WebM): el original en `originales`, la miniatura en
   `miniaturas`; en la ficha de la obra, reproductor con reproducir/pausa, velocidad
   (0,25x–2x) y paso de fotograma.
@@ -50,9 +50,9 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Carga de obras/colecciones/secuencias/entregas desde Drive al iniciar sesión, tolerante a fallos parciales por carpeta.
 - Guardados en cola con aviso de "Guardando…", error visible y botón para reintentar; los cambios se envían en orden.
 - Subida de obras más rápida: IDs de carpetas cacheados (se invalidan si Drive responde 401), miniatura/galería/original en paralelo, 2 obras simultáneas y reintento con espera ante 403/429.
-- Animaciones más rápidas: 3 fotogramas en paralelo, galería de 1024 px, GIF de 640 px con paleta compartida y originales que se suben en segundo plano sin bloquear la animación.
-- Drive más claro: raíz "Kuromi Likes Your Drawings", carpeta "Sin colección" y una carpeta por colección con solo la imagen principal o el GIF; migración automática de `_datos`/`archivos`.
-- Borrar una colección devuelve sus dibujos huérfanos a "Sin colección", y borrar una animación elimina sus fotogramas y su GIF.
+- Animaciones más rápidas al editar: 3 fotogramas en paralelo, galería de 1024 px y vistas previas locales; el vídeo solo se exporta al guardar.
+- Drive más claro: raíz "Kuromi Likes Your Drawings", carpeta "Sin colección", una carpeta por colección con solo la imagen principal y una carpeta por animación con su vídeo, fotogramas y originales; migración automática de `_datos`/`archivos`.
+- Borrar una colección devuelve sus dibujos huérfanos a "Sin colección", y borrar una animación mueve a la papelera su carpeta, vídeo y fotogramas.
 - Exportación a ZIP real: datos, imágenes originales, galería, miniaturas, versiones y fotogramas.
 - Iconos PWA generados desde `public/icon.png` (`npm run generate-pwa-assets`), con icono normal, `maskable` y `apple-touch-icon`.
 - Altura dinámica (`100dvh`) y área segura (`env(safe-area-inset-*)`) para iPad.
@@ -67,13 +67,13 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (129 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, colas de guardado y borrado, GIF y portada, tareas en segundo plano, ZIP, subida de fotogramas y originales diferidos, media y filtros).
+- Unitarias con Vitest: `npm run test` (132 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, ZIP, media y filtros).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
-- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Incluye la creación de una animación hasta su editor. La suite existente no se ha actualizado tras los cambios de sesión, guardado y borrado; revisarla antes de darla por buena.
+- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, y guardarla en una carpeta con vídeo, fotogramas y originales. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
 
 ## Pendiente
-- Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popups, EXIF, descarga del ZIP e instalación PWA.
-- Actualizar la suite E2E a la nueva sesión y a las colas de guardado/borrado.
+- Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popups, EXIF, grabación de vídeo con `MediaRecorder`, descarga del ZIP e instalación PWA.
+- Verificar en Safari real que el vídeo se reproduce desde la carpeta de Drive y que el formato elegido (MP4 o WebM) es compatible.
 - Fase 4 restante: estadísticas/racha, paleta por obra, moodboard y easter egg.
 - Pruebas unitarias de la lógica de imagen (requieren simular `heic2any` y canvas).
 
