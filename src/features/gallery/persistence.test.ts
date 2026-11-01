@@ -242,7 +242,7 @@ describe('trashColeccion', () => {
     expect(trashColeccionFolder).toHaveBeenCalledWith('token', conCarpeta)
   })
 
-  it('returns orphan drawings and animations to the inbox before trashing the folder', async () => {
+  it('returns orphan drawings and legacy animations to the inbox before trashing the folder', async () => {
     ;(findFileByName as any).mockResolvedValue({ id: 'json-2', name: 'coleccion-col-1.json' })
     useGalleryStore.getState().hydrate({ obras: [obra], colecciones: [], secuencias: [secuencia], entregas: [] })
     const conCarpeta: Coleccion = { ...coleccion, driveFolderId: 'folder-1' }
@@ -260,16 +260,31 @@ describe('trashColeccion', () => {
       id: 'obra-1',
     })
   })
+
+  it('keeps saved animation videos inside their own folder', async () => {
+    ;(findFileByName as any).mockResolvedValue({ id: 'json-2', name: 'coleccion-col-1.json' })
+    const conCarpeta: Coleccion = { ...coleccion, driveFolderId: 'folder-1' }
+    const guardada: Secuencia = {
+      ...secuencia,
+      folderId: 'anim-folder',
+      mainFileId: 'video-1',
+      coleccionIds: ['col-1'],
+    }
+
+    await trashColeccion('token', conCarpeta, { obras: [], secuencias: [guardada] })
+
+    expect(addFilesToFolder).not.toHaveBeenCalledWith('token', ['gif-1'], 'inbox-1')
+  })
 })
 
 describe('trashSecuencia', () => {
-  it('trashes every frame, the encoded GIF and the JSON', async () => {
+  it('trashes every frame, the video, the animation folder and the JSON', async () => {
     ;(findFileByName as any).mockResolvedValue({ id: 'json-3', name: 'secuencia-s1.json' })
 
-    await trashSecuencia('token', { ...secuencia, mainFileId: 'gif-1' })
+    await trashSecuencia('token', { ...secuencia, mainFileId: 'video-1', folderId: 'anim-folder' })
 
     const trashedIds = (trashFile as any).mock.calls.map((c: any[]) => c[1])
-    expect(trashedIds).toEqual(expect.arrayContaining(['orig-1', 'gal-1', 'gif-1', 'json-3']))
+    expect(trashedIds).toEqual(expect.arrayContaining(['orig-1', 'gal-1', 'video-1', 'anim-folder', 'json-3']))
     expect(findFileByName).toHaveBeenCalledWith('token', 'secuencia-s1.json', 'secuencias')
   })
 })

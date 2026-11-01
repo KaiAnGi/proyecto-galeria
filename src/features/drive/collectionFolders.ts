@@ -123,6 +123,7 @@ export async function syncSecuenciaIntoColeccionFolder(
   secuencia: Secuencia,
   shouldBeInside: boolean,
 ): Promise<void> {
+  if (secuencia.folderId) return
   const fileId = secuenciaMainFileId(secuencia)
   if (!fileId) return
 

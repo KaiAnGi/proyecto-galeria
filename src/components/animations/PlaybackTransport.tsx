@@ -8,6 +8,7 @@ interface PlaybackTransportProps {
   loop: boolean
   onion: boolean
   fps: number
+  disabled?: boolean
   onPrevious: () => void
   onNext: () => void
   onToggle: () => void
@@ -24,6 +25,7 @@ export default function PlaybackTransport({
   loop,
   onion,
   fps,
+  disabled = false,
   onPrevious,
   onNext,
   onToggle,
@@ -45,7 +47,7 @@ export default function PlaybackTransport({
           step={1}
           value={Math.min(currentIndex, Math.max(0, total - 1))}
           onChange={(event) => onSeek(Number(event.target.value))}
-          disabled={total === 0}
+          disabled={disabled || total === 0}
           aria-label={es.pencil.currentFrame}
           className="w-full accent-[var(--accent)]"
         />
@@ -53,7 +55,7 @@ export default function PlaybackTransport({
           <button
             type="button"
             onClick={onPrevious}
-            disabled={total === 0}
+            disabled={disabled || total === 0}
             aria-label={es.pencil.previous}
             className="btn btn-soft min-h-11 min-w-11 px-2"
           >
@@ -62,7 +64,7 @@ export default function PlaybackTransport({
           <button
             type="button"
             onClick={onToggle}
-            disabled={total === 0}
+            disabled={disabled || total === 0}
             aria-label={playing ? es.pencil.pause : es.pencil.play}
             className="btn btn-primary min-h-11 min-w-11 px-3"
           >
@@ -71,7 +73,7 @@ export default function PlaybackTransport({
           <button
             type="button"
             onClick={onNext}
-            disabled={total === 0}
+            disabled={disabled || total === 0}
             aria-label={es.pencil.next}
             className="btn btn-soft min-h-11 min-w-11 px-2"
           >
@@ -83,6 +85,7 @@ export default function PlaybackTransport({
           <button
             type="button"
             onClick={() => onLoop(!loop)}
+            disabled={disabled}
             aria-pressed={loop}
             className={`btn min-h-11 ${loop ? 'btn-primary' : 'btn-soft'}`}
           >
@@ -92,6 +95,7 @@ export default function PlaybackTransport({
           <button
             type="button"
             onClick={() => onOnion(!onion)}
+            disabled={disabled}
             aria-pressed={onion}
             className={`btn min-h-11 ${onion ? 'btn-primary' : 'btn-soft'}`}
           >
@@ -107,6 +111,7 @@ export default function PlaybackTransport({
               step={1}
               value={fps}
               onChange={(event) => onFps(Number(event.target.value))}
+              disabled={disabled}
               aria-label={es.pencil.fps}
               className="w-20 accent-[var(--accent)]"
             />
@@ -117,6 +122,7 @@ export default function PlaybackTransport({
                 key={preset}
                 type="button"
                 onClick={() => onFps(preset)}
+                disabled={disabled}
                 aria-pressed={fps === preset}
                 aria-label={es.pencil.fpsShort(preset)}
                 className={`min-h-11 min-w-11 rounded-full px-2 text-xs ${

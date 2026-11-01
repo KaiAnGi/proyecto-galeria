@@ -221,7 +221,7 @@ describe('syncSecuenciaIntoColeccionFolder', () => {
     coleccionIds: [],
   }
 
-  it('moves only the encoded GIF into the collection and out of the inbox', async () => {
+  it('moves only the legacy main file into the collection and out of the inbox', async () => {
     const fetchMock = stubPatchFetch()
     const conCarpeta: Coleccion = { ...coleccion, driveFolderId: 'col-folder' }
 
@@ -231,5 +231,19 @@ describe('syncSecuenciaIntoColeccionFolder', () => {
     expect(urls).toHaveLength(2)
     expect(urls[0]).toContain('/files/gif-1?addParents=col-folder')
     expect(urls[1]).toContain('/files/gif-1?removeParents=inbox-folder')
+  })
+
+  it('leaves saved animation videos inside their own folder', async () => {
+    const fetchMock = stubPatchFetch()
+    const conCarpeta: Coleccion = { ...coleccion, driveFolderId: 'col-folder' }
+
+    await syncSecuenciaIntoColeccionFolder(
+      'token',
+      conCarpeta,
+      { ...secuencia, folderId: 'anim-folder', mainFileId: 'video-1' },
+      true,
+    )
+
+    expect(patchedUrls(fetchMock)).toHaveLength(0)
   })
 })
