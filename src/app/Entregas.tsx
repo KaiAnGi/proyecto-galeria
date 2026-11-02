@@ -152,24 +152,24 @@ export default function Entregas() {
             return (
               <article
                 key={entrega.id}
-                className="card p-4 flex flex-col gap-3 fade-up"
+                className="card relative p-4 flex flex-col gap-3 fade-up"
                 style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}
               >
+                <Link
+                  to={`/entrega/${entrega.id}`}
+                  aria-label={es.entregas.openDetail}
+                  className="absolute inset-0 z-10 rounded-[1.25rem] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+                />
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <Link
-                      to={`/entrega/${entrega.id}`}
-                      className="inline-flex min-h-[44px] items-center font-display font-semibold hover:text-[var(--accent-soft)]"
-                    >
-                      {entrega.titulo}
-                    </Link>
+                    <h2 className="font-display font-semibold">{entrega.titulo}</h2>
                     <p className="text-sm text-[var(--muted)]">
                       {entrega.asignatura ? `${entrega.asignatura} · ` : ''}
                       {entrega.fechaLimite ? `${entrega.fechaLimite}` : ''}
                       {label ? ` · ${label}` : ''}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="relative z-20 flex items-center gap-3">
                     <select
                       value={entrega.estado}
                       onChange={(e) => patch(entrega.id, { estado: e.target.value as Estado })}
@@ -191,7 +191,7 @@ export default function Entregas() {
                   {entrega.obraIds.length === 0 ? (
                     <p className="text-[var(--muted)]">{es.entregas.noLinkedWorks}</p>
                   ) : (
-                    <ul className="flex flex-wrap gap-2">
+                    <ul className="relative z-20 flex flex-wrap gap-2">
                       {entrega.obraIds.map((obraId) => {
                         const obra = obras.find((o) => o.id === obraId)
                         if (!obra) return null
@@ -217,7 +217,7 @@ export default function Entregas() {
                       value=""
                       onChange={(e) => linkObra(entrega, e.target.value)}
                       aria-label={es.entregas.linkWork}
-                      className="field mt-2"
+                      className="field relative z-20 mt-2"
                     >
                       <option value="">{es.entregas.linkWork}</option>
                       {unlinked.map((o) => (

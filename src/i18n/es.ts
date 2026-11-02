@@ -104,6 +104,7 @@
   entregas: {
     title: 'Entregas de clase',
     back: 'Volver',
+    openDetail: 'Abrir detalle de la entrega',
     notFound: 'No se ha encontrado la entrega.',
     add: 'Añadir entrega',
     noEntregas: 'Aún no tienes entregas de clase.',
