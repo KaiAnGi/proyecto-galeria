@@ -13,7 +13,6 @@ import { queueColeccionTrash } from '../features/gallery/trashQueue'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { StarSticker } from '../components/Stickers'
-import CuteComment from '../components/CuteComment'
 
 export default function ColeccionDetail() {
   const { id } = useParams<{ id: string }>()
@@ -290,7 +289,6 @@ export default function ColeccionDetail() {
           )}
         </div>
       </section>
-      <CuteComment />
     </div>
   )
 }

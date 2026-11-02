@@ -23,6 +23,7 @@ import {
 import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { PencilIcon, SaveIcon, TrashIcon } from '../components/Icons'
+import CuteComment from '../components/CuteComment'
 import FrameTimeline from '../components/animations/FrameTimeline'
 import PlaybackTransport from '../components/animations/PlaybackTransport'
 
@@ -408,6 +409,7 @@ export default function AnimacionDetail() {
           onFps={(value) => updateDraft(id, (current) => ({ ...current, fps: value }))}
         />
       </div>
+      <CuteComment />
     </div>
   )
 }

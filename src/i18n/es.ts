@@ -50,6 +50,7 @@
     noResultsSub: 'Uy! Prueba con otras palabras o quita algún filtro.',
     count: (n: number) => (n === 1 ? '1 dibujo' : `${n} dibujos`),
     noImage: 'Sin imagen',
+    zoomImage: 'Ampliar imagen',
     untitled: 'Sin título',
     undo: 'Deshacer',
     trashed: 'Movido a la papelera, como tus chats de Hinge',
@@ -102,6 +103,8 @@
   },
   entregas: {
     title: 'Entregas de clase',
+    back: 'Volver',
+    notFound: 'No se ha encontrado la entrega.',
     add: 'Añadir entrega',
     noEntregas: 'Aún no tienes entregas de clase.',
     emptySub: 'Apunta aquí tus trabajos de clase para no perderte con las fechas de entrega!',

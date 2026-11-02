@@ -10,7 +10,6 @@ import { queueEntregaTrash } from '../features/gallery/trashQueue'
 import { es } from '../i18n/es'
 import { MoonSticker } from '../components/Stickers'
 import { PlusIcon } from '../components/Icons'
-import CuteComment from '../components/CuteComment'
 
 type Estado = Entrega['estado']
 
@@ -158,7 +157,12 @@ export default function Entregas() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="font-display font-semibold">{entrega.titulo}</h2>
+                    <Link
+                      to={`/entrega/${entrega.id}`}
+                      className="inline-flex min-h-[44px] items-center font-display font-semibold hover:text-[var(--accent-soft)]"
+                    >
+                      {entrega.titulo}
+                    </Link>
                     <p className="text-sm text-[var(--muted)]">
                       {entrega.asignatura ? `${entrega.asignatura} · ` : ''}
                       {entrega.fechaLimite ? `${entrega.fechaLimite}` : ''}
@@ -229,7 +233,6 @@ export default function Entregas() {
           })}
         </section>
       )}
-      <CuteComment />
     </div>
   )
 }

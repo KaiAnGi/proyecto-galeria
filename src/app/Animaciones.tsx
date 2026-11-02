@@ -8,7 +8,6 @@ import type { Secuencia } from '../features/gallery/secuencias'
 import { es } from '../i18n/es'
 import { BatSticker } from '../components/Stickers'
 import { PencilIcon, PlusIcon, TrashIcon } from '../components/Icons'
-import CuteComment from '../components/CuteComment'
 import NewAnimationPanel from '../components/animations/NewAnimationPanel'
 
 function formatDate(value: string): string {
@@ -142,7 +141,6 @@ export default function Animaciones() {
           ))}
         </section>
       )}
-      <CuteComment />
     </div>
   )
 }

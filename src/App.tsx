@@ -9,6 +9,7 @@ import ColeccionDetail from './app/ColeccionDetail'
 import Animaciones from './app/Animaciones'
 import AnimacionDetail from './app/AnimacionDetail'
 import Entregas from './app/Entregas'
+import EntregaDetail from './app/EntregaDetail'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/animaciones/:id" element={<AnimacionDetail />} />
         <Route path="/pencil-test" element={<Navigate to="/animaciones" replace />} />
         <Route path="/entregas" element={<Entregas />} />
+        <Route path="/entrega/:id" element={<EntregaDetail />} />
       </Routes>
     </HashRouter>
   )
