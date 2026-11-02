@@ -41,9 +41,6 @@ export default function CuteComment({ delay = 400, duration = 3500 }: Props) {
   const [comment] = useState(pickComment)
 
   useEffect(() => {
-    const key = `cute-comment-${location.pathname}`
-    if (sessionStorage.getItem(key)) return
-    sessionStorage.setItem(key, '1')
     const t1 = setTimeout(() => setVisible(true), delay)
     const t2 = setTimeout(() => setVisible(false), delay + duration)
     return () => {
@@ -55,11 +52,11 @@ export default function CuteComment({ delay = 400, duration = 3500 }: Props) {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex items-end gap-3 px-3 pb-3 sm:gap-4 sm:px-4 sm:pb-4 animate-[fadeIn_.3s_ease]">
+    <div className="fixed inset-x-0 bottom-0 z-50 flex items-end gap-3 px-3 pb-3 sm:gap-4 sm:px-4 sm:pb-4 pop-in">
       <img src={comment.icon} alt="" className="w-24 h-24 sm:w-28 sm:h-28 sticker-shadow shrink-0" />
-      <div className="relative flex-1 min-w-0 bg-[var(--panel)] border-2 border-[var(--border)] rounded-2xl px-4 py-3 shadow-lg sm:px-5 sm:py-4">
+      <div className="relative flex-1 min-w-0 bg-[var(--surface)] border-2 border-[var(--border)] rounded-2xl px-4 py-3 shadow-lg sm:px-5 sm:py-4">
         <div className="absolute -left-2 bottom-4 w-0 h-0 border-t-8 border-b-8 border-r-8 border-transparent border-r-[var(--border)]" />
-        <div className="absolute -left-[6px] bottom-4 w-0 h-0 border-t-7 border-b-7 border-r-7 border-transparent border-r-[var(--panel)]" />
+        <div className="absolute -left-[6px] bottom-4 w-0 h-0 border-t-7 border-b-7 border-r-7 border-transparent border-r-[var(--surface)]" />
         <p className="text-base sm:text-lg md:text-xl font-medium">{comment.msg}</p>
       </div>
     </div>
