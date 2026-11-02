@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { es } from '../i18n/es'
 import { ensureToken, preloadGoogleAuth, signInWithGoogle } from '../features/auth/googleAuth'
 import { useAuth } from '../features/auth/useAuth'
@@ -8,6 +8,9 @@ import { exportAllToZip } from '../lib/export/zipExport'
 import { friendlyError } from '../lib/errors/friendlyError'
 import { useGalleryStore } from '../features/gallery/store'
 import { SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
+import AnniversaryBanner from '../components/AnniversaryBanner'
+import TogetherCounter from '../components/TogetherCounter'
+import HiddenLetter from '../components/HiddenLetter'
 
 export default function Home() {
   const auth = useAuth()
@@ -15,6 +18,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [rootId, setRootId] = useState<string | null>(() => sessionStorage.getItem('gallery-root-id'))
   const [exporting, setExporting] = useState(false)
+  const [letterOpen, setLetterOpen] = useState(false)
+  const kuromiClicks = useRef(0)
+  const clickReset = useRef<number | null>(null)
 
   useEffect(() => {
     if (!auth.token) return
@@ -33,6 +39,30 @@ export default function Home() {
       cancelled = true
     }
   }, [auth.token])
+
+  useEffect(
+    () => () => {
+      if (clickReset.current !== null) window.clearTimeout(clickReset.current)
+    },
+    [],
+  )
+
+  const closeLetter = useCallback(() => setLetterOpen(false), [])
+
+  function handleKuromiClick() {
+    kuromiClicks.current += 1
+    if (clickReset.current !== null) window.clearTimeout(clickReset.current)
+    if (kuromiClicks.current >= 5) {
+      kuromiClicks.current = 0
+      clickReset.current = null
+      setLetterOpen(true)
+      return
+    }
+    clickReset.current = window.setTimeout(() => {
+      kuromiClicks.current = 0
+      clickReset.current = null
+    }, 2000)
+  }
 
   async function handleConnect() {
     setConnecting(true)
@@ -89,14 +119,22 @@ export default function Home() {
 
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-6 gap-7">
+      <AnniversaryBanner />
       <div className="flex flex-col items-center text-center gap-2 fade-up">
         <div className="relative">
-          <img
-            src="./icon.png"
-            alt=""
-            aria-hidden="true"
-            className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow object-contain ${busy ? 'hop' : 'sticker-float'}`}
-          />
+          <button
+            type="button"
+            onClick={handleKuromiClick}
+            aria-label={es.romance.letter.mascotLabel}
+            className="block rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
+          >
+            <img
+              src="./icon.png"
+              alt=""
+              aria-hidden="true"
+              className={`w-24 h-24 sm:w-28 sm:h-28 sticker-shadow object-contain ${busy ? 'hop' : 'sticker-float'}`}
+            />
+          </button>
           <SparkleSticker className="absolute -top-2 -right-7 w-7 twinkle" />
           <HeartSticker className="absolute -bottom-2 -left-6 w-6 sticker-float-slow" />
           <span className="absolute -top-3 -left-8 twinkle" style={{ animationDelay: '1.2s' }}>
@@ -105,6 +143,7 @@ export default function Home() {
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold gradient-text">{es.app.title}</h1>
         <p className="text-[var(--muted)] max-w-sm">{es.app.tagline}</p>
+        <TogetherCounter />
       </div>
 
       {showConnect && (
@@ -207,6 +246,7 @@ export default function Home() {
           </div>
         </div>
       )}
+      <HiddenLetter open={letterOpen} onClose={closeLetter} />
     </div>
   )
 }

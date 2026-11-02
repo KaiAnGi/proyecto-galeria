@@ -457,6 +457,53 @@ select.field option {
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.4));
 }
 
+/* ---------- Carta escondida ---------- */
+
+.love-letter {
+  color: #4a2438;
+  background-color: #fff9ef;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 2rem,
+      rgba(161, 86, 123, 0.14) 2rem calc(2rem + 1px)
+    ),
+    radial-gradient(circle at 15% 10%, rgba(255, 168, 211, 0.25), transparent 55%);
+  border-radius: 0.9rem;
+  box-shadow:
+    0 30px 70px rgba(8, 4, 14, 0.55),
+    inset 0 0 80px rgba(255, 168, 211, 0.18);
+}
+
+.love-letter::before {
+  content: '';
+  position: absolute;
+  top: -0.9rem;
+  left: 50%;
+  width: 7rem;
+  height: 1.8rem;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(255, 168, 211, 0.75);
+  border-left: 1px dashed rgba(255, 255, 255, 0.6);
+  border-right: 1px dashed rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 10px rgba(8, 4, 14, 0.15);
+}
+
+@keyframes letterOpen {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-1.5deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(-1deg) scale(1);
+  }
+}
+
+.letter-open {
+  animation: letterOpen 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+}
+
 /* ---------- Animaciones ---------- */
 
 @keyframes fadeUp {

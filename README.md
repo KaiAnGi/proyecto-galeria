@@ -64,17 +64,20 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
   cortas que respetan `prefers-reduced-motion`. Favicon propio (calavera con lazo).
 - Toda la tipografía de interfaz vive en `src/i18n/es.ts`; se extrajeron los textos
   que estaban sueltos en Colecciones, ColeccionDetail y Pencil test.
+- Contador "Juntos desde..." con los días juntos y cuenta atrás al siguiente
+  mes-versario, más un banner especial en mes-versarios y cumpleaños.
+- Carta escondida: cinco toques seguidos en Kuromi abren una carta de papel sobre la interfaz.
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (132 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, ZIP, media y filtros).
+- Unitarias con Vitest: `npm run test` (139 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, ZIP, media, filtros y fechas románticas).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, y guardarla en una carpeta con vídeo, fotogramas y originales. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
 
 ## Pendiente
 - Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popups, EXIF, grabación de vídeo con `MediaRecorder`, descarga del ZIP e instalación PWA.
 - Verificar en Safari real que el vídeo se reproduce desde la carpeta de Drive y que el formato elegido (MP4 o WebM) es compatible.
-- Fase 4 restante: estadísticas/racha, paleta por obra, moodboard y easter egg.
+- Fase 4 restante: estadísticas/racha, paleta por obra y moodboard.
 - Pruebas unitarias de la lógica de imagen (requieren simular `heic2any` y canvas).
 
 ## Desarrollo

@@ -239,6 +239,31 @@
       'ÑOMÑOMÑOM',
     ],
   },
+  romance: {
+    togetherSince: (date: string) => `Juntos desde el ${date}`,
+    daysTogether: (n: number) => (n === 1 ? '1 día juntos' : `${n} días juntos`),
+    nextMonthiversary: (n: number) =>
+      n === 1 ? 'Falta 1 día para el próximo mes-versario' : `Faltan ${n} días para el próximo mes-versario`,
+    monthiversaryToday: 'Hoy es nuestro mes-versario',
+    banner: {
+      monthiversaryTitle: '¡Feliz mes-versario!',
+      monthiversaryBody: (n: number) =>
+        n === 1 ? '1 día a tu lado y todos los que nos quedan.' : `${n} días a tu lado y todos los que nos quedan.`,
+      birthdayPartnerTitle: '¡Feliz cumpleaños, mi amor!',
+      birthdayPartnerBody: 'Hoy se celebra el día en que llegaste al mundo. Qué suerte la mía.',
+      birthdayAuthorTitle: 'Hoy es mi cumpleaños',
+      birthdayAuthorBody: 'No necesito regalos: ya te tengo a ti.',
+    },
+    letter: {
+      mascotLabel: 'Kuromi',
+      kicker: 'Una carta escondida',
+      title: 'Para ti',
+      greeting: 'Mi amor:',
+      body: 'Si estás leyendo esto, has encontrado el pequeño secreto que escondía esta galería. Quería que este sitio no fuera solo el lugar donde guardas tus dibujos, sino un trocito de mí dentro de tu mundo. Cada trazo tuyo tiene algo que me encanta: tu paciencia, tu forma de mirar y esas ganas de hacer las cosas bonitas. Gracias por dejarme ver cómo creas, por confiar en mí y por hacer que hasta los días más normales se sientan un poco mágicos. Ojalá esta galería te acompañe muchos años y ojalá yo esté ahí para verlo. Te quiero.',
+      signature: 'Con todo mi cariño,\nDemi',
+      close: 'Cerrar',
+    },
+  },
   pencil: {
     title: 'Animaciones',
     kicker: 'Pencil test',
