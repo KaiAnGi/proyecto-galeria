@@ -213,6 +213,28 @@
   easter: {
     hint: 'Hay algo escondido...',
   },
+  cuteComments: {
+    kuromi: [
+      'Vale pero y la sala seis la ves?',
+      'JURA',
+      'Quisiera ser un peeeez~',
+      'Soy Demi-chan y este es mi dibujo',
+      'Que no me llames twin',
+      'La vida son ciclos: hay ciclos que estás ¡plof! y hay ciclos que estás ¡uuuuh!',
+      
+    ],
+    myMelody: [
+      '¡Qué barbaridad!',
+      'Como este siga en directo y vosotras sigais besandoos, me voy a tirar por la ventana',
+    ],
+    cinnamoroll: [
+      'El resto me lo mandas por burofax?',
+      '¿A este no lo vas a llamar autista?',
+      'Te quiero mucho',
+      'Como me vuelvas a llamar cuchurrumin...',
+      'ÑOMÑOMÑOM',
+    ],
+  },
   pencil: {
     title: 'Animaciones',
     kicker: 'Pencil test',
