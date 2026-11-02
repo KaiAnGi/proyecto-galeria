@@ -36,7 +36,7 @@ type Props = {
   duration?: number
 }
 
-export default function CuteComment({ delay = 400, duration = 3500 }: Props) {
+export default function CuteComment({ delay = 350, duration = 6500 }: Props) {
   const [visible, setVisible] = useState(false)
   const [comment] = useState(pickComment)
 
@@ -52,19 +52,38 @@ export default function CuteComment({ delay = 400, duration = 3500 }: Props) {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex items-end gap-3 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:gap-4 sm:px-4 sm:pb-[calc(env(safe-area-inset-bottom)+1rem)] pop-in">
-      <img src={comment.icon} alt="" className="w-24 h-24 sm:w-28 sm:h-28 sticker-shadow shrink-0" />
+    <div className="fixed inset-x-0 bottom-0 z-50 flex items-end gap-3 px-3 pb-[calc(env(safe-area-inset-bottom)+0.9rem)] sm:gap-4 sm:px-4 sm:pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pop-in">
+      <img
+        src={comment.icon}
+        alt=""
+        className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 drop-shadow-[0_18px_40px_rgba(236,72,153,0.45)] animate-[cute-float_4s_ease-in-out_infinite]"
+      />
       <div
-        className="relative flex-1 min-w-0 backdrop-blur-md border-2 border-[var(--border)] rounded-2xl px-4 py-3 shadow-2xl ring-1 ring-white/15 sm:px-5 sm:py-4"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--surface) 82%, transparent)' }}
+        className="relative flex-1 min-w-0 backdrop-blur-xl border-[3px] rounded-3xl px-5 py-4 shadow-[0_40px_90px_-25px_rgba(219,39,119,0.6)] ring-2 ring-white/30 sm:px-6 sm:py-5"
+        style={{
+          background:
+            'radial-gradient(140% 140% at 0% 0%, rgba(255,255,255,0.32) 0%, color-mix(in srgb, var(--surface) 92%, transparent) 62%)',
+          borderColor: 'color-mix(in srgb, var(--accent) 55%, var(--border))',
+        }}
       >
-        <div className="absolute -left-2 bottom-4 w-0 h-0 border-t-8 border-b-8 border-r-8 border-transparent border-r-[var(--border)]" />
+        <div className="absolute -left-3 bottom-5 w-0 h-0 border-t-[10px] border-b-[10px] border-r-[12px] border-transparent border-r-[color-mix(in_srgb,var(--accent)_55%,var(--border))]" />
         <div
-          className="absolute -left-[6px] bottom-4 w-0 h-0 border-t-7 border-b-7 border-r-7 border-transparent"
-          style={{ borderRightColor: 'color-mix(in srgb, var(--surface) 82%, transparent)' }}
+          className="absolute -left-[8px] bottom-5 w-0 h-0 border-t-[9px] border-b-[9px] border-r-[11px] border-transparent"
+          style={{
+            borderRightColor:
+              'color-mix(in srgb, var(--surface) 92%, transparent)',
+          }}
         />
-        <p className="text-base sm:text-lg md:text-xl font-medium">{comment.msg}</p>
+        <p className="text-base sm:text-lg md:text-xl font-semibold tracking-tight drop-shadow-[0_1px_10px_rgba(255,255,255,0.25)]">
+          {comment.msg}
+        </p>
       </div>
+      <style>{`
+        @keyframes cute-float {
+          0%, 100% { transform: translateY(0px) rotate(-2deg); }
+          50% { transform: translateY(-10px) rotate(2deg); }
+        }
+      `}</style>
     </div>
   )
 }
