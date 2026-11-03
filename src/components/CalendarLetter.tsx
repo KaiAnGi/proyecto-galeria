@@ -5,7 +5,7 @@ import { useGalleryStore, type CalendarioEvento } from '../features/gallery/stor
 import { authorBirthday, daysTogether, isMonthiversary, nextMonthiversary, partnerBirthday, relationshipStartDate } from '../features/romance/dates'
 import { saveCalendarioEvento, trashCalendarioEvento } from '../features/gallery/persistence'
 import { ensureToken } from '../features/auth/googleAuth'
-import { ulid } from 'ulid'
+import { ulid } from 'ulidx'
 
 type Props = { open: boolean; onClose: () => void }
 type DayEvent = { key: string; type: 'monthiversary' | 'anniversary' | 'birthdayPartner' | 'birthdayAuthor' | 'entrega' | 'custom'; title: string; detail?: string; entregaId?: string; evento?: CalendarioEvento }
