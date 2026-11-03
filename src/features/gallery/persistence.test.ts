@@ -183,7 +183,7 @@ describe('loadAllData', () => {
     expect(data.colecciones).toEqual([coleccion])
     expect(data.secuencias).toHaveLength(1)
     expect(data.entregas).toEqual([entrega])
-    expect(listJsonFiles).toHaveBeenCalledTimes(4)
+    expect(listJsonFiles).toHaveBeenCalledTimes(5)
   })
 
   it('keeps the folders that load when another folder falls', async () => {
@@ -309,6 +309,6 @@ describe('ensureLoaded', () => {
     await ensureLoaded('token')
     await ensureLoaded('token')
 
-    expect(listJsonFiles).toHaveBeenCalledTimes(4)
+    expect(listJsonFiles).toHaveBeenCalledTimes(5)
   })
 })

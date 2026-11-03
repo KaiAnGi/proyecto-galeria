@@ -169,7 +169,7 @@ describe('initDriveStructure', () => {
     const createdNames = fetch.mock.calls
       .filter((call) => call[1]?.method === 'POST')
       .map((call) => JSON.parse(call[1].body).name)
-    expect(createdNames).toHaveLength(11)
+    expect(createdNames).toHaveLength(12)
     expect(createdNames).toEqual(
       expect.arrayContaining([
         'Kuromi Likes Your Drawings',
