@@ -154,6 +154,7 @@ export interface DriveStructure {
   coleccionesId: string
   secuenciasId: string
   entregasId: string
+  calendarioId: string
   inboxId: string
 }
 
@@ -163,12 +164,13 @@ export async function ensureDriveStructure(token: string): Promise<DriveStructur
     ensureInternalFolder(token, root.id),
     ensureFolder(token, INBOX_FOLDER_NAME, root.id, 'inbox'),
   ])
-  const [archivos, obras, colecciones, secuencias, entregas] = await Promise.all([
+  const [archivos, obras, colecciones, secuencias, entregas, calendario] = await Promise.all([
     ensureArchivosFolder(token, interno.id, root.id),
     ensureFolder(token, 'obras', interno.id, 'obras'),
     ensureFolder(token, 'colecciones', interno.id, 'colecciones'),
     ensureFolder(token, 'secuencias', interno.id, 'secuencias'),
     ensureFolder(token, 'entregas', interno.id, 'entregas'),
+    ensureFolder(token, 'calendario', interno.id, 'calendario'),
   ])
   const [originales, galeria, miniaturas] = await Promise.all([
     ensureFolder(token, 'originales', archivos.id, 'originales'),
@@ -186,6 +188,7 @@ export async function ensureDriveStructure(token: string): Promise<DriveStructur
     coleccionesId: colecciones.id,
     secuenciasId: secuencias.id,
     entregasId: entregas.id,
+    calendarioId: calendario.id,
     inboxId: inbox.id,
   }
 }

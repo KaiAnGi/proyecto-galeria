@@ -10,7 +10,7 @@ import {
   syncSecuenciaIntoColeccionFolder,
   trashColeccionFolder,
 } from '../drive/collectionFolders'
-import type { Obra, Coleccion, Entrega } from './store'
+import type { Obra, Coleccion, Entrega, CalendarioEvento } from './store'
 import type { Secuencia } from './secuencias'
 import { useGalleryStore } from './store'
 
@@ -141,11 +141,25 @@ export async function trashEntrega(token: string, entrega: Entrega): Promise<voi
   await trashJsonByName(token, folders.entregasId, `entrega-${entrega.id}.json`)
 }
 
+export async function saveCalendarioEvento(token: string, evento: CalendarioEvento): Promise<void> {
+  const folders = await getFolderIds(token)
+  await upsertJson(token, evento, `calendario-${evento.id}.json`, [folders.calendarioId], {
+    kind: 'calendario',
+    id: evento.id,
+  })
+}
+
+export async function trashCalendarioEvento(token: string, evento: CalendarioEvento): Promise<void> {
+  const folders = await getFolderIds(token)
+  await trashJsonByName(token, folders.calendarioId, `calendario-${evento.id}.json`)
+}
+
 export interface LoadedData {
   obras: Obra[]
   colecciones: Coleccion[]
   secuencias: Secuencia[]
   entregas: Entrega[]
+  calendarioEventos: CalendarioEvento[]
 }
 
 function isAuthError(e: unknown): boolean {
@@ -175,6 +189,7 @@ export async function loadAllData(token: string): Promise<LoadedData> {
     listJsonFiles(token, folders.coleccionesId),
     listJsonFiles(token, folders.secuenciasId),
     listJsonFiles(token, folders.entregasId),
+    listJsonFiles(token, folders.calendarioId),
   ])
 
   for (const result of folderResults) {
@@ -190,14 +205,15 @@ export async function loadAllData(token: string): Promise<LoadedData> {
   }
 
   const files = folderResults.map((result) => (result.status === 'fulfilled' ? result.value : []))
-  const [obras, colecciones, secuencias, entregas] = await Promise.all([
+  const [obras, colecciones, secuencias, entregas, calendarioEventos] = await Promise.all([
     loadEntities<Obra>(token, files[0]),
     loadEntities<Coleccion>(token, files[1]),
     loadEntities<Secuencia>(token, files[2]),
     loadEntities<Entrega>(token, files[3]),
+    loadEntities<CalendarioEvento>(token, files[4] || []),
   ])
 
-  return { obras, colecciones, secuencias, entregas }
+  return { obras, colecciones, secuencias, entregas, calendarioEventos }
 }
 
 let loadedOnce = false

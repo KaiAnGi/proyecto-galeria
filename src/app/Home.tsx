@@ -11,6 +11,7 @@ import { SparkleSticker, HeartSticker, StarSticker } from '../components/Sticker
 import AnniversaryBanner from '../components/AnniversaryBanner'
 import TogetherCounter from '../components/TogetherCounter'
 import HiddenLetter from '../components/HiddenLetter'
+import CalendarLetter from '../components/CalendarLetter'
 
 export default function Home() {
   const auth = useAuth()
@@ -19,6 +20,7 @@ export default function Home() {
   const [rootId, setRootId] = useState<string | null>(() => sessionStorage.getItem('gallery-root-id'))
   const [exporting, setExporting] = useState(false)
   const [letterOpen, setLetterOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const kuromiClicks = useRef(0)
   const clickReset = useRef<number | null>(null)
 
@@ -48,6 +50,7 @@ export default function Home() {
   )
 
   const closeLetter = useCallback(() => setLetterOpen(false), [])
+  const closeCalendar = useCallback(() => setCalendarOpen(false), [])
 
   function handleKuromiClick() {
     kuromiClicks.current += 1
@@ -143,7 +146,26 @@ export default function Home() {
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold gradient-text">{es.app.title}</h1>
         <p className="text-[var(--muted)] max-w-sm">{es.app.tagline}</p>
-        <TogetherCounter />
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <TogetherCounter />
+          <button
+            type="button"
+            onClick={() => setCalendarOpen(true)}
+            className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            aria-label={es.calendar.open}
+            title={es.calendar.open}
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-semibold text-white shadow">
+              {new Date().getDate()}
+            </span>
+          </button>
+        </div>
       </div>
 
       {showConnect && (
@@ -247,6 +269,7 @@ export default function Home() {
         </div>
       )}
       <HiddenLetter open={letterOpen} onClose={closeLetter} />
+      <CalendarLetter open={calendarOpen} onClose={closeCalendar} />
     </div>
   )
 }

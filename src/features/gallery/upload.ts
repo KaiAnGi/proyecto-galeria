@@ -22,6 +22,7 @@ export interface FolderIds {
   coleccionesId: string
   secuenciasId: string
   entregasId: string
+  calendarioId: string
   inboxId: string
 }
 
@@ -48,6 +49,7 @@ async function loadFolderIds(token: string): Promise<FolderIds> {
     coleccionesId: structure.coleccionesId,
     secuenciasId: structure.secuenciasId,
     entregasId: structure.entregasId,
+    calendarioId: structure.calendarioId,
     inboxId: structure.inboxId,
   }
 }

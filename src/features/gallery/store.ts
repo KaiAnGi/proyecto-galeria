@@ -64,11 +64,23 @@ export interface Entrega {
   obraIds: string[]
 }
 
+export interface CalendarioEvento {
+  schema: 1
+  id: string
+  rev: number
+  updatedAt: string
+  titulo: string
+  fecha: string
+  notas?: string
+  createdAt: string
+}
+
 interface GalleryState {
   obras: Obra[]
   colecciones: Coleccion[]
   secuencias: Secuencia[]
   entregas: Entrega[]
+  calendarioEventos: CalendarioEvento[]
   addObra: (obra: Obra) => void
   updateObra: (id: string, patch: Partial<Obra>) => void
   removeObraSoft: (id: string) => void
@@ -85,6 +97,9 @@ interface GalleryState {
   addEntrega: (e: Entrega) => void
   updateEntrega: (id: string, patch: Partial<Entrega>) => void
   removeEntrega: (id: string) => void
+  addCalendarioEvento: (e: CalendarioEvento) => void
+  updateCalendarioEvento: (id: string, patch: Partial<CalendarioEvento>) => void
+  removeCalendarioEvento: (id: string) => void
   hydrate: (state: Partial<GalleryState>) => void
 }
 
@@ -93,6 +108,7 @@ export const useGalleryStore = create<GalleryState>((set) => ({
   colecciones: [],
   secuencias: [],
   entregas: [],
+  calendarioEventos: [],
   addObra: (obra) => set((state) => ({ obras: [obra, ...state.obras] })),
   updateObra: (id, patch) =>
     set((state) => ({
@@ -166,5 +182,11 @@ export const useGalleryStore = create<GalleryState>((set) => ({
       entregas: state.entregas.map((e) => (e.id === id ? { ...e, ...patch, updatedAt: new Date().toISOString() } : e)),
     })),
   removeEntrega: (id) => set((state) => ({ entregas: state.entregas.filter((e) => e.id !== id) })),
-  hydrate: (state) => set((prev) => ({ ...prev, ...state })),
+  addCalendarioEvento: (e) => set((state) => ({ calendarioEventos: [e, ...state.calendarioEventos] })),
+  updateCalendarioEvento: (id, patch) =>
+    set((state) => ({
+      calendarioEventos: state.calendarioEventos.map((ev) => (ev.id === id ? { ...ev, ...patch, updatedAt: new Date().toISOString() } : ev)),
+    })),
+  removeCalendarioEvento: (id) => set((state) => ({ calendarioEventos: state.calendarioEventos.filter((ev) => ev.id !== id) })),
+  hydrate: (state) => set(state),
 }))

@@ -26,6 +26,16 @@ function dateOnDay(year: number, month: number, day: number): Date {
   return new Date(year, month, Math.min(day, lastDay))
 }
 
+export function partnerBirthday(year?: number): Date {
+  const y = year ?? new Date().getFullYear()
+  return dateOnDay(y, PARTNER_BIRTHDAY.month - 1, PARTNER_BIRTHDAY.day)
+}
+
+export function authorBirthday(year?: number): Date {
+  const y = year ?? new Date().getFullYear()
+  return dateOnDay(y, AUTHOR_BIRTHDAY.month - 1, AUTHOR_BIRTHDAY.day)
+}
+
 export function nextMonthiversary(now = new Date(), day = MONTHIVERSARY_DAY): Date {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const thisMonth = dateOnDay(today.getFullYear(), today.getMonth(), day)
