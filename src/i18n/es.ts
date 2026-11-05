@@ -161,6 +161,9 @@
   errors: {
     network: 'No se ha podido conectar con Google. Comprueba tu conexión o desactiva el bloqueador solo para esta página y vuelve a intentarlo.',
     session: 'Tu sesión con Google ha caducado. Conéctate otra vez para continuar.',
+    permission: 'Google no ha dado permiso para hacer esto. Conéctate otra vez y vuelve a intentarlo.',
+    calendarUnavailable:
+      'El calendario de Google no está listo todavía. Pide ayuda para terminar de activarlo.',
     notFound: 'No se encuentra la estructura en Drive. Conéctate otra vez para volver a crearla.',
     unexpected: 'Algo ha salido mal. Vuelve a intentarlo en unos minutos.',
   },
@@ -225,11 +228,13 @@
       'Soy Demi-chan y este es mi dibujo',
       'Que no me llames twin',
       'La vida son ciclos: hay ciclos que estás ¡plof! y hay ciclos que estás ¡uuuuh!',
-      
+      '¡Uuuuuyy! ¡Qué estrés todooo!',
+      'Escuchando mi música de chica blanca israelí ♫',
+      'Me pregunto si me querrían si fuese un archivador...',
     ],
     myMelody: [
       '¡Qué barbaridad!',
-      'Como este siga en directo y vosotras sigais besandoos, me voy a tirar por la ventana',
+      'Como este siga en directo y vosotras sigais besandoos, me uno al beso',
     ],
     cinnamoroll: [
       'El resto me lo mandas por burofax?',
@@ -237,6 +242,7 @@
       'Te quiero mucho <3',
       'Como me vuelvas a llamar cuchurrumín...',
       'ÑOMÑOMÑOM',
+      'No, si fueses un archivador no serías tú. Un archivador no tiene nada tuyo.',
     ],
   },
   romance: {

@@ -67,11 +67,12 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Calendario privado en Google Calendar: la app crea un calendario secundario propio y guarda su ID en `_interno/config.json`. Las entregas con fecha límite se crean, actualizan o borran allí y los eventos nuevos se crean directamente en Google Calendar; los eventos personalizados antiguos que vivían en Drive se migran una sola vez. Borrar un evento se puede deshacer durante 7 s y después es definitivo, porque Google Calendar no tiene papelera.
 - Contador "Juntos desde..." con los días juntos y cuenta atrás al siguiente
   mes-versario, más un banner especial en mes-versarios y cumpleaños. Vive dentro del calendario.
+- La carta del calendario ocupa una sola pantalla sin scroll: horizontal en tablet/PC y vertical en móvil. Si Google rechaza la sesión o el permiso, se olvida el token y "Reintentar" vuelve a pedir acceso.
 - Carta escondida: cinco toques seguidos en Kuromi abren una carta de papel sobre la interfaz.
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (169 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, filtros y fechas románticas).
+- Unitarias con Vitest: `npm run test` (174 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, filtros y fechas románticas).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, y guardarla en una carpeta con vídeo, fotogramas y originales. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
 

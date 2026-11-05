@@ -11,7 +11,7 @@ import {
   partnerBirthday,
   relationshipStartDate,
 } from '../features/romance/dates'
-import { ensureCalendarToken } from '../features/auth/googleAuth'
+import { clearSessionToken, ensureCalendarToken } from '../features/auth/googleAuth'
 import { ensureLoaded } from '../features/gallery/persistence'
 import {
   createEvent,
@@ -27,9 +27,15 @@ import {
   eventTimeLabel,
 } from '../features/googleCalendar/mapping'
 import type { GoogleCalendarEvent } from '../features/googleCalendar/types'
-import { friendlyError } from '../lib/errors/friendlyError'
+import { friendlyError, shouldRefreshSession } from '../lib/errors/friendlyError'
 
 type Props = { open: boolean; onClose: () => void }
+
+function describeCalendarError(e: unknown, fallback: string): string {
+  if (shouldRefreshSession(e)) clearSessionToken()
+  return friendlyError(e, fallback)
+}
+
 type DayEventType =
   | 'monthiversary'
   | 'anniversary'
@@ -125,7 +131,7 @@ export default function CalendarLetter({ open, onClose }: Props) {
         setMigrationDone(setup.migrated)
         setMonthKey((value) => value + 1)
       } catch (e) {
-        if (!cancelled) setError(friendlyError(e, es.calendar.loadError))
+        if (!cancelled) setError(describeCalendarError(e, es.calendar.loadError))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -158,7 +164,7 @@ export default function CalendarLetter({ open, onClose }: Props) {
         })
         if (!cancelled) setGoogleEvents(events)
       } catch (e) {
-        if (!cancelled) setError(friendlyError(e, es.calendar.loadError))
+        if (!cancelled) setError(describeCalendarError(e, es.calendar.loadError))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -356,7 +362,7 @@ export default function CalendarLetter({ open, onClose }: Props) {
       setSelectedDate(formDate)
       resetForm()
     } catch (e) {
-      setError(friendlyError(e, es.calendar.saveError))
+      setError(describeCalendarError(e, es.calendar.saveError))
     } finally {
       setSaving(false)
     }
@@ -433,251 +439,288 @@ export default function CalendarLetter({ open, onClose }: Props) {
       aria-modal="true"
       aria-labelledby="calendar-title"
       onClick={onClose}
-      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[70] flex h-[100dvh] max-h-[100dvh] items-center justify-center overflow-hidden bg-black/75 p-2 backdrop-blur-sm sm:p-4"
     >
       <article
         onClick={(e) => e.stopPropagation()}
-        className="love-letter letter-open relative my-auto w-full max-w-2xl px-5 py-7 text-[#4a2438] sm:px-10 sm:py-10"
+        className="love-letter letter-open relative flex h-full min-h-0 w-full max-w-5xl flex-col px-3 py-3 text-[#4a2438] max-h-full sm:px-6 sm:py-5 md:max-h-[52rem] lg:max-w-6xl lg:px-8"
       >
-        <HeartSticker className="absolute -right-3 -top-4 h-10 w-10 sticker-shadow" />
-        <StarSticker className="absolute -left-3 bottom-6 h-6 w-6 opacity-80" />
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-[#a1567b]">
+        <HeartSticker className="absolute -right-3 -top-4 hidden h-10 w-10 sticker-shadow sm:block" />
+        <StarSticker className="absolute -left-3 bottom-6 hidden h-6 w-6 opacity-80 sm:block" />
+
+        <header className="flex shrink-0 items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="hidden text-[10px] uppercase tracking-[0.25em] text-[#a1567b] sm:block">
               {es.calendar.kicker}
             </p>
             <h2
               id="calendar-title"
-              className="mt-1 font-display text-3xl font-bold text-[#7b2f55] sm:text-4xl"
+              className="truncate font-display text-xl font-bold text-[#7b2f55] sm:mt-1 sm:text-3xl lg:text-4xl"
             >
               {es.calendar.title}
             </h2>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} className="btn btn-soft">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="btn btn-soft shrink-0 px-3"
+          >
             {es.romance.letter.close}
           </button>
         </header>
 
-        <div className="mt-5">
+        <div className="mt-1 shrink-0 sm:mt-2">
           <TogetherCounter />
         </div>
 
         {error && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#fde7ee] px-4 py-3 text-sm text-[#8a3158]">
-            <p>{error}</p>
-            <button type="button" onClick={() => setReloadKey((value) => value + 1)} className="btn btn-soft">
+          <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#fde7ee] px-3 py-2 text-xs text-[#8a3158] sm:text-sm">
+            <p className="min-w-0 flex-1">{error}</p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((value) => value + 1)}
+              className="btn btn-soft shrink-0 px-3"
+            >
               {es.calendar.retry}
             </button>
           </div>
         )}
 
         {loading && (
-          <p className="mt-3 text-xs text-[#a1567b]">{es.calendar.loading}</p>
+          <p className="mt-1 shrink-0 text-[10px] text-[#a1567b] sm:text-xs">
+            {es.calendar.loading}
+          </p>
         )}
 
         {pendingDelete && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#fff3d6] px-4 py-3 text-sm">
-            <p>{es.calendar.deleted}</p>
-            <button type="button" onClick={undoDelete} className="btn btn-soft">
+          <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#fff3d6] px-3 py-2 text-xs sm:text-sm">
+            <p className="min-w-0 flex-1">{es.calendar.deleted}</p>
+            <button
+              type="button"
+              onClick={undoDelete}
+              className="btn btn-soft shrink-0 px-3"
+            >
               {es.calendar.undo}
             </button>
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between">
-          <button type="button" onClick={() => shiftMonth(-1)} className="btn btn-soft px-3">
-            {es.calendar.monthPrev}
-          </button>
-          <p className="font-display text-lg capitalize">{monthLabel}</p>
-          <button type="button" onClick={() => shiftMonth(1)} className="btn btn-soft px-3">
-            {es.calendar.monthNext}
-          </button>
-        </div>
-
-        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-xs uppercase tracking-widest text-[#a1567b] sm:gap-2">
-          {WEEKDAYS.map((weekday) => (
-            <div key={weekday} className="py-1">
-              {weekday}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-1 grid grid-cols-7 gap-1 sm:gap-2">
-          {monthDays.map((day) => {
-            const events = eventsByDate.get(day.iso) || []
-            const isSelected = selectedDate === day.iso
-            const isToday = day.iso === isoDate(now)
-            return (
+        <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 md:mt-4 md:flex-row md:gap-4">
+          <section
+            className={
+              'flex min-h-0 flex-[1.15] flex-col ' + (formOpen ? 'hidden md:flex' : '')
+            }
+          >
+            <div className="flex shrink-0 items-center justify-between gap-1">
               <button
-                key={day.iso}
                 type="button"
-                onClick={() => {
-                  setSelectedDate(day.iso)
-                  resetForm()
-                }}
-                className={
-                  'relative flex min-h-[3.25rem] flex-col items-center justify-start rounded-2xl px-1 py-1 text-sm transition sm:min-h-[4rem] ' +
-                  (isSelected
-                    ? 'bg-white/80 shadow-md ring-1 ring-[#f7a8c3]'
-                    : 'bg-white/40 hover:bg-white/70') +
-                  ' ' +
-                  (day.inMonth ? '' : 'opacity-50')
-                }
+                onClick={() => shiftMonth(-1)}
+                className="btn btn-soft shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
               >
-                <span
-                  className={
-                    'mt-1 flex h-6 w-6 items-center justify-center rounded-full ' +
-                    (isToday ? 'bg-[#f7a8c3]/60 font-semibold' : '')
-                  }
-                >
-                  {day.date.getDate()}
-                </span>
-                <div className="mt-1 flex flex-wrap justify-center gap-1">
-                  {events.slice(0, 3).map((event) => (
-                    <span
-                      key={event.key}
-                      className={
-                        'h-1.5 w-1.5 rounded-full ' +
-                        (event.type === 'entrega'
-                          ? 'bg-[#7b9bff]'
-                          : event.type === 'google'
-                            ? 'bg-[#a78bfa]'
-                            : event.type === 'custom'
-                              ? 'bg-[#a78bfa]'
-                              : 'bg-[#f59e0b]')
-                      }
-                    />
-                  ))}
-                </div>
+                {es.calendar.monthPrev}
               </button>
-            )
-          })}
-        </div>
-
-        <section className="mt-6 rounded-3xl bg-white/60 p-4 shadow-inner sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-display text-lg text-[#7b2f55]">
-              {es.calendar.events} -{' '}
-              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-            </p>
-            <button
-              type="button"
-              onClick={() => (formOpen && formMode === 'create' ? resetForm() : startCreate())}
-              className="btn btn-accent"
-            >
-              {es.calendar.addEvent}
-            </button>
-          </div>
-
-          {formOpen && (
-            <div className="mt-3 flex flex-col gap-2">
-              <p className="font-medium text-[#7b2f55]">
-                {formMode === 'edit' ? es.calendar.editEvent : es.calendar.addTitle}
+              <p className="min-w-0 truncate px-1 text-center font-display text-base capitalize sm:text-lg">
+                {monthLabel}
               </p>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={es.calendar.eventTitlePlaceholder}
-                className="w-full rounded-2xl border border-[#f3c9d8] bg-white/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f7a8c3]"
-              />
-              <label className="text-xs text-[#a1567b]">
-                {es.calendar.eventDate}
-                <input
-                  type="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-[#f3c9d8] bg-white/80 px-3 py-2 text-sm text-[#4a2438] focus:outline-none focus:ring-2 focus:ring-[#f7a8c3]"
-                />
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={es.calendar.eventNotesPlaceholder}
-                rows={2}
-                className="w-full rounded-2xl border border-[#f3c9d8] bg-white/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f7a8c3]"
-              />
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving || !title.trim() || !calendarId}
-                  className="btn btn-primary"
-                >
-                  {saving ? es.app.saving : es.calendar.save}
-                </button>
-                <button type="button" onClick={resetForm} className="btn btn-soft">
-                  {es.calendar.cancel}
-                </button>
-              </div>
-              <p className="text-xs text-[#a1567b]/80">{es.calendar.noteCalendar}</p>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-col gap-2">
-            {selectedEvents.length === 0 && (
-              <p className="text-sm text-[#a1567b]">{es.calendar.noEvents}</p>
-            )}
-            {selectedEvents.map((event) => (
-              <div
-                key={event.key}
-                className="flex items-start justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2"
+              <button
+                type="button"
+                onClick={() => shiftMonth(1)}
+                className="btn btn-soft shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
               >
-                <div>
-                  <p className="font-medium">{event.title}</p>
-                  <p className="text-xs text-[#a1567b]">
-                    {es.calendar.type[event.type]}
-                    {event.detail ? ' - ' + event.detail : ''}
-                  </p>
-                  {event.type === 'entrega' && event.entregaId && (
-                    <a
-                      href={'#/entrega/' + event.entregaId}
-                      className="mt-1 inline-block text-xs text-[#7b2f55] underline"
-                    >
-                      {es.entregas.openDetail}
-                    </a>
-                  )}
-                  {event.googleEvent?.htmlLink && !event.entregaId && (
-                    <a
-                      href={event.googleEvent.htmlLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 inline-block text-xs text-[#7b2f55] underline"
-                    >
-                      {es.calendar.openInGoogle}
-                    </a>
-                  )}
+                {es.calendar.monthNext}
+              </button>
+            </div>
+
+            <div className="mt-1 grid shrink-0 grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-widest text-[#a1567b] sm:gap-2 sm:text-xs">
+              {WEEKDAYS.map((weekday) => (
+                <div key={weekday} className="py-0.5 sm:py-1">
+                  {weekday}
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  {event.googleEvent && !event.entregaId && (
-                    <button
-                      type="button"
-                      onClick={() => startEdit(event)}
-                      className="text-xs text-[#a1567b] underline"
+              ))}
+            </div>
+
+            <div className="mt-1 grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-1 sm:gap-2">
+              {monthDays.map((day) => {
+                const events = eventsByDate.get(day.iso) || []
+                const isSelected = selectedDate === day.iso
+                const isToday = day.iso === isoDate(now)
+                return (
+                  <button
+                    key={day.iso}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(day.iso)
+                      resetForm()
+                    }}
+                    className={
+                      'relative flex min-h-0 min-w-0 flex-col items-center justify-start overflow-hidden rounded-lg px-0.5 py-0.5 text-xs transition sm:rounded-2xl sm:px-1 sm:py-1 sm:text-sm ' +
+                      (isSelected
+                        ? 'bg-white/80 shadow-md ring-1 ring-[#f7a8c3]'
+                        : 'bg-white/40 hover:bg-white/70') +
+                      ' ' +
+                      (day.inMonth ? '' : 'opacity-50')
+                    }
+                  >
+                    <span
+                      className={
+                        'mt-0.5 flex h-5 w-5 items-center justify-center rounded-full text-[11px] sm:mt-1 sm:h-6 sm:w-6 sm:text-sm ' +
+                        (isToday ? 'bg-[#f7a8c3]/60 font-semibold' : '')
+                      }
                     >
-                      {es.calendar.edit}
-                    </button>
-                  )}
-                  {event.googleEvent && !event.entregaId && (
-                    <button
-                      type="button"
-                      onClick={() => requestDelete(event)}
-                      className="text-xs text-[#a1567b] underline"
-                    >
-                      {es.calendar.delete}
-                    </button>
-                  )}
-                  {event.type === 'custom' && event.evento && (
-                    <span className="text-xs text-[#a1567b]">{es.calendar.legacyEvent}</span>
-                  )}
+                      {day.date.getDate()}
+                    </span>
+                    <div className="mt-0.5 flex flex-wrap justify-center gap-0.5 sm:mt-1 sm:gap-1">
+                      {events.slice(0, 3).map((event) => (
+                        <span
+                          key={event.key}
+                          className={
+                            'h-1 w-1 rounded-full sm:h-1.5 sm:w-1.5 ' +
+                            (event.type === 'entrega'
+                              ? 'bg-[#7b9bff]'
+                              : event.type === 'google'
+                                ? 'bg-[#a78bfa]'
+                                : event.type === 'custom'
+                                  ? 'bg-[#a78bfa]'
+                                  : 'bg-[#f59e0b]')
+                          }
+                        />
+                      ))}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-white/60 p-2 shadow-inner sm:rounded-3xl sm:p-4 md:w-[45%] md:flex-none">
+            <div className="flex shrink-0 items-center justify-between gap-2">
+              <p className="min-w-0 truncate font-display text-sm text-[#7b2f55] sm:text-lg">
+                {es.calendar.events} -{' '}
+                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </p>
+              <button
+                type="button"
+                onClick={() => (formOpen && formMode === 'create' ? resetForm() : startCreate())}
+                className="btn btn-accent shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
+              >
+                {es.calendar.addEvent}
+              </button>
+            </div>
+
+            {formOpen ? (
+              <div className="mt-2 flex min-h-0 flex-1 flex-col gap-1.5">
+                <p className="shrink-0 text-sm font-medium text-[#7b2f55]">
+                  {formMode === 'edit' ? es.calendar.editEvent : es.calendar.addTitle}
+                </p>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={es.calendar.eventTitlePlaceholder}
+                  className="w-full shrink-0 rounded-2xl border border-[#f3c9d8] bg-white/80 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f7a8c3]"
+                />
+                <label className="shrink-0 text-xs text-[#a1567b]">
+                  {es.calendar.eventDate}
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="mt-1 w-full rounded-2xl border border-[#f3c9d8] bg-white/80 px-3 py-1.5 text-sm text-[#4a2438] focus:outline-none focus:ring-2 focus:ring-[#f7a8c3]"
+                  />
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={es.calendar.eventNotesPlaceholder}
+                  className="min-h-0 w-full flex-1 resize-none rounded-2xl border border-[#f3c9d8] bg-white/80 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f7a8c3]"
+                />
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || !title.trim() || !calendarId}
+                    className="btn btn-primary px-3 text-xs sm:text-sm"
+                  >
+                    {saving ? es.app.saving : es.calendar.save}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="btn btn-soft px-3 text-xs sm:text-sm"
+                  >
+                    {es.calendar.cancel}
+                  </button>
                 </div>
+                <p className="hidden shrink-0 text-[10px] text-[#a1567b]/80 sm:block">
+                  {es.calendar.noteCalendar}
+                </p>
               </div>
-            ))}
-          </div>
-        </section>
+            ) : (
+              <div className="mt-2 grid min-h-0 flex-1 grid-cols-2 content-start gap-1.5 overflow-hidden sm:gap-2">
+                {selectedEvents.length === 0 && (
+                  <p className="col-span-2 text-sm text-[#a1567b]">{es.calendar.noEvents}</p>
+                )}
+                {selectedEvents.map((event) => (
+                  <div
+                    key={event.key}
+                    className="flex min-w-0 flex-col rounded-xl bg-white/70 px-2 py-1.5 sm:rounded-2xl sm:px-3 sm:py-2"
+                  >
+                    <p className="truncate text-xs font-medium sm:text-sm">{event.title}</p>
+                    <p className="truncate text-[10px] text-[#a1567b] sm:text-xs">
+                      {es.calendar.type[event.type]}
+                      {event.detail ? ' - ' + event.detail : ''}
+                    </p>
+                    <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-1 text-[10px] sm:text-xs">
+                      {event.type === 'entrega' && event.entregaId && (
+                        <a
+                          href={'#/entrega/' + event.entregaId}
+                          className="text-[#7b2f55] underline"
+                        >
+                          {es.entregas.openDetail}
+                        </a>
+                      )}
+                      {event.googleEvent?.htmlLink && !event.entregaId && (
+                        <a
+                          href={event.googleEvent.htmlLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#7b2f55] underline"
+                        >
+                          {es.calendar.openInGoogle}
+                        </a>
+                      )}
+                      {event.googleEvent && !event.entregaId && (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(event)}
+                          className="text-[#a1567b] underline"
+                        >
+                          {es.calendar.edit}
+                        </button>
+                      )}
+                      {event.googleEvent && !event.entregaId && (
+                        <button
+                          type="button"
+                          onClick={() => requestDelete(event)}
+                          className="text-[#a1567b] underline"
+                        >
+                          {es.calendar.delete}
+                        </button>
+                      )}
+                      {event.type === 'custom' && event.evento && (
+                        <span className="text-[#a1567b]">{es.calendar.legacyEvent}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </article>
     </div>
   )

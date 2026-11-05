@@ -213,6 +213,14 @@ export function hasCalendarScope(): boolean {
   return hasValidToken() && grantedScopes.includes(CALENDAR_SCOPE)
 }
 
+export function clearSessionToken(): void {
+  token = null
+  expiresAt = null
+  grantedScopes = []
+  clearStoredSession()
+  emit({ status: 'disconnected', token: null, hasConnectedBefore, error: null })
+}
+
 function shouldRenewSoon(): boolean {
   if (!token || !expiresAt) return true
   const now = Date.now() / 1000
@@ -368,6 +376,14 @@ export async function signInWithGoogle(): Promise<string> {
       throw new AuthError('Google Identity Services no disponible')
     }
     initTokenClient()
+  }
+  if (renewPromise) {
+    try {
+      return await renewPromise
+    } catch {
+      // The silent renewal started by a pointer gesture failed; fall through
+      // to the explicit sign-in so the user can still connect.
+    }
   }
   return requestToken('select_account', 'connect')
 }

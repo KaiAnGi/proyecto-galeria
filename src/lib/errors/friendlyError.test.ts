@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { friendlyError } from './friendlyError'
+import { friendlyError, shouldRefreshSession } from './friendlyError'
 import { es } from '../../i18n/es'
 
 describe('friendlyError', () => {
@@ -13,7 +13,32 @@ describe('friendlyError', () => {
 
   it('maps expired sessions to the session message', () => {
     expect(friendlyError(new Error('Upload error: 401'))).toBe(es.errors.session)
-    expect(friendlyError(new Error('Drive API error: 403'))).toBe(es.errors.session)
+  })
+
+  it('maps forbidden requests to a permission message', () => {
+    expect(friendlyError(new Error('Drive API error: 403'))).toBe(es.errors.permission)
+  })
+
+  it('explains when the Calendar API is not enabled', () => {
+    expect(
+      friendlyError(
+        new Error(
+          'Calendar API error: 403 {"error":{"reason":"accessNotConfigured","message":"Google Calendar API has not been used in project 123"}}',
+        ),
+      ),
+    ).toBe(es.errors.calendarUnavailable)
+  })
+
+  it('detects responses that need a fresh Google session', () => {
+    expect(shouldRefreshSession(new Error('Calendar API error: 401'))).toBe(true)
+    expect(
+      shouldRefreshSession(
+        new Error('Calendar API error: 403 {"reason":"insufficientPermissions"}'),
+      ),
+    ).toBe(true)
+    expect(shouldRefreshSession(new Error('Calendar API error: 403'))).toBe(false)
+    expect(shouldRefreshSession(new Error('Upload error: 500'))).toBe(false)
+    expect(shouldRefreshSession('not an error')).toBe(false)
   })
 
   it('maps a missing root folder', () => {

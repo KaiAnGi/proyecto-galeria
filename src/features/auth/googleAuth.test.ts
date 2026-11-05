@@ -82,6 +82,73 @@ describe('googleAuth', () => {
     expect(requestAccessToken).not.toHaveBeenCalled()
   })
 
+  it('clears a rejected token so the next attempt asks Google again', async () => {
+    sessionStorage.setItem(
+      'gallery-auth-session-v1',
+      JSON.stringify({
+        accessToken: 'stale-token',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        scopes: ['https://www.googleapis.com/auth/drive.file'],
+      }),
+    )
+
+    const auth = await import('./googleAuth')
+    expect(auth.getToken()).toBe('stale-token')
+
+    auth.clearSessionToken()
+
+    expect(auth.getToken()).toBeNull()
+    expect(auth.hasCalendarScope()).toBe(false)
+    expect(sessionStorage.getItem('gallery-auth-session-v1')).toBeNull()
+    expect(auth.getAuthSnapshot()).toMatchObject({
+      status: 'disconnected',
+      token: null,
+      hasConnectedBefore: true,
+    })
+  })
+
+  it('falls back to an explicit sign-in when the automatic renewal fails', async () => {
+    localStorage.setItem('gallery-has-connected-v1', '1')
+    let calls = 0
+    ;(window as { google?: unknown }).google = {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            scope: string
+            callback: (resp: {
+              access_token: string
+              expires_in: number
+              scope: string
+            }) => void
+            error_callback?: (error: { type: string }) => void
+          }) => ({
+            requestAccessToken: () => {
+              calls += 1
+              if (calls === 1) {
+                config.error_callback?.({ type: 'interaction_required' })
+                return
+              }
+              config.callback({
+                access_token: 'explicit-token',
+                expires_in: 3600,
+                scope: config.scope,
+              })
+            },
+          }),
+        },
+      },
+    }
+
+    const auth = await import('./googleAuth')
+    await auth.initGoogleAuth()
+    const renewal = auth.renewToken().catch(() => undefined)
+    const token = await auth.signInWithGoogle()
+
+    await renewal
+    expect(token).toBe('explicit-token')
+    expect(calls).toBe(2)
+  })
+
   it('renews silently on demand without asking for an account', async () => {
     localStorage.setItem('gallery-has-connected-v1', '1')
     let prompt: string | undefined = 'unset'

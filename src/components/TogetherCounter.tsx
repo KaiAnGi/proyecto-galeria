@@ -19,12 +19,17 @@ export default function TogetherCounter() {
   const countdown = daysUntilNextMonthiversary(now)
 
   return (
-    <div className="panel mt-1 flex flex-col items-center gap-1 px-4 py-3 text-center fade-up" style={{ animationDelay: '0.06s' }}>
-      <p className="text-xs text-[var(--muted)]">
+    <div
+      className="panel mt-1 flex flex-col items-center gap-0.5 px-3 py-1.5 text-center fade-up sm:gap-1 sm:px-4 sm:py-3"
+      style={{ animationDelay: '0.06s' }}
+    >
+      <p className="hidden text-xs text-[var(--muted)] sm:block">
         {es.romance.togetherSince(longDate.format(relationshipStartDate()))}
       </p>
-      <p className="font-display text-lg">{es.romance.daysTogether(days)}</p>
-      <p className="text-xs text-[var(--muted)]">
+      <p className="font-display text-base text-[var(--accent)] sm:text-lg">
+        {es.romance.daysTogether(days)}
+      </p>
+      <p className="text-[10px] text-[var(--muted)] sm:text-xs">
         {isMonthiversary(now) ? es.romance.monthiversaryToday : es.romance.nextMonthiversary(countdown)}
       </p>
     </div>
