@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { useGalleryStore } from './store'
 import { enqueueSave } from './saveQueue'
 import { trashColeccion, trashEntrega, trashObra, trashSecuencia } from './persistence'
+import { deleteEntregaFromCalendar } from '../googleCalendar/sync'
 import type { Coleccion, Entrega, Obra } from './store'
 import type { Secuencia } from './secuencias'
 
@@ -134,6 +135,11 @@ export function queueEntregaTrash(entrega: Entrega): void {
   queueTrash({
     key: `entrega:${entrega.id}`,
     restore: () => useGalleryStore.getState().addEntrega(entrega),
-    commit: (token) => trashEntrega(token, entrega),
+    commit: async (token) => {
+      await trashEntrega(token, entrega)
+      await deleteEntregaFromCalendar(token, entrega.id).catch((error) => {
+        console.warn('Calendar delete failed', error)
+      })
+    },
   })
 }

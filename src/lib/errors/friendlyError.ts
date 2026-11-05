@@ -1,7 +1,7 @@
 import { es } from '../../i18n/es'
 
 const NETWORK_RE = /failed to fetch|networkerror|load failed|network connection|cors|blocked|adblock/i
-const HTTP_ERROR_RE = /(?:Upload|Drive API|Download|Update|Trash) error: (\d{3})/
+const HTTP_ERROR_RE = /(?:Upload|Drive API|Calendar API|Download|Update|Trash) error: (\d{3})/
 
 export function friendlyError(e: unknown, fallback: string = es.errors.unexpected): string {
   if (!(e instanceof Error)) return fallback

@@ -4,6 +4,10 @@ vi.mock('./saveQueue', () => ({
   enqueueSave: vi.fn(),
 }))
 
+vi.mock('../googleCalendar/sync', () => ({
+  deleteEntregaFromCalendar: vi.fn(async () => undefined),
+}))
+
 vi.mock('./persistence', () => ({
   trashObra: vi.fn(async () => undefined),
   trashColeccion: vi.fn(async () => undefined),
@@ -11,12 +15,20 @@ vi.mock('./persistence', () => ({
   trashEntrega: vi.fn(async () => undefined),
 }))
 
+import { deleteEntregaFromCalendar } from '../googleCalendar/sync'
 import { enqueueSave } from './saveQueue'
-import { trashColeccion } from './persistence'
+import { trashColeccion, trashEntrega } from './persistence'
 import { useGalleryStore } from './store'
-import type { Coleccion, Obra } from './store'
+import type { Coleccion, Entrega, Obra } from './store'
 import type { Secuencia } from './secuencias'
-import { flushTrash, getTrashSnapshot, queueColeccionTrash, queueTrash, undoTrash } from './trashQueue'
+import {
+  flushTrash,
+  getTrashSnapshot,
+  queueColeccionTrash,
+  queueEntregaTrash,
+  queueTrash,
+  undoTrash,
+} from './trashQueue'
 
 const coleccion: Coleccion = {
   schema: 1,
@@ -52,6 +64,17 @@ const obra: Obra = {
       drive: { originalId: 'orig-1', galeriaId: 'gal-1' },
     },
   ],
+}
+
+const entrega: Entrega = {
+  schema: 1,
+  id: 'entrega-1',
+  rev: 1,
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  titulo: 'Trabajo final',
+  fechaLimite: '2026-02-10',
+  estado: 'pendiente',
+  obraIds: [],
 }
 
 const secuencia: Secuencia = {
@@ -115,6 +138,31 @@ describe('trashQueue', () => {
     expect(state.colecciones.map((c) => c.id)).toEqual(['col-1'])
     expect(state.obras[0].coleccionIds).toEqual(['col-1', 'col-2'])
     expect(state.secuencias[0].coleccionIds).toEqual(['col-1'])
+  })
+
+  it('removes an entrega at once, trashes its Drive JSON and deletes its calendar event', async () => {
+    useGalleryStore.getState().hydrate({ obras: [], colecciones: [], secuencias: [], entregas: [entrega] })
+
+    queueEntregaTrash(entrega)
+
+    expect(useGalleryStore.getState().entregas).toHaveLength(0)
+    flushTrash()
+
+    await vi.waitFor(() => expect(trashEntrega).toHaveBeenCalledWith('token', entrega))
+    await vi.waitFor(() =>
+      expect(deleteEntregaFromCalendar).toHaveBeenCalledWith('token', 'entrega-1'),
+    )
+  })
+
+  it('restores an entrega on undo without deleting anything', () => {
+    useGalleryStore.getState().hydrate({ obras: [], colecciones: [], secuencias: [], entregas: [entrega] })
+
+    queueEntregaTrash(entrega)
+    undoTrash()
+
+    expect(useGalleryStore.getState().entregas.map((item) => item.id)).toEqual(['entrega-1'])
+    expect(trashEntrega).not.toHaveBeenCalled()
+    expect(deleteEntregaFromCalendar).not.toHaveBeenCalled()
   })
 
   it('trashes the collection with the works and animations it linked', async () => {

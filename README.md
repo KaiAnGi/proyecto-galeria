@@ -6,7 +6,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 
 ### Fase 0 — Esqueleto y pruebas de riesgo (hecha)
 - PWA instalable (Vite + React + TypeScript, vite-plugin-pwa), desplegada en GitHub Pages.
-- Login con Google (scope `drive.file`), token en memoria y `sessionStorage` con caducidad. Sin ventana al arrancar: el primer toque renueva; nunca se guarda en `localStorage`.
+- Login con Google (scopes `drive.file` y `calendar.app.created`), token en memoria y `sessionStorage` con caducidad. Sin ventana al arrancar: el primer toque renueva; nunca se guarda en `localStorage`. El permiso de Calendar se pide al abrir el calendario.
 - Estructura de carpetas en Drive y archivo de prueba de lectura/escritura.
 - iOS por defecto en modo navegador (`display: "browser"`); `VITE_IOS_STANDALONE`
   permite activar pantalla completa tras probarla en un dispositivo real.
@@ -64,18 +64,20 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
   cortas que respetan `prefers-reduced-motion`. Favicon propio (calavera con lazo).
 - Toda la tipografía de interfaz vive en `src/i18n/es.ts`; se extrajeron los textos
   que estaban sueltos en Colecciones, ColeccionDetail y Pencil test.
+- Calendario privado en Google Calendar: la app crea un calendario secundario propio y guarda su ID en `_interno/config.json`. Las entregas con fecha límite se crean, actualizan o borran allí y los eventos nuevos se crean directamente en Google Calendar; los eventos personalizados antiguos que vivían en Drive se migran una sola vez. Borrar un evento se puede deshacer durante 7 s y después es definitivo, porque Google Calendar no tiene papelera.
 - Contador "Juntos desde..." con los días juntos y cuenta atrás al siguiente
-  mes-versario, más un banner especial en mes-versarios y cumpleaños.
+  mes-versario, más un banner especial en mes-versarios y cumpleaños. Vive dentro del calendario.
 - Carta escondida: cinco toques seguidos en Kuromi abren una carta de papel sobre la interfaz.
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (139 pruebas: autenticación/sesión, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, ZIP, media, filtros y fechas románticas).
+- Unitarias con Vitest: `npm run test` (169 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, filtros y fechas románticas).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, y guardarla en una carpeta con vídeo, fotogramas y originales. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
 
 ## Pendiente
-- Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popups, EXIF, grabación de vídeo con `MediaRecorder`, descarga del ZIP e instalación PWA.
+- Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popup de permiso de Calendar, EXIF, grabación de vídeo con `MediaRecorder`, descarga del ZIP e instalación PWA.
+- Verificar si Google exige revisión para `calendar.app.created` y si el calendario creado se puede gestionar sin acceso a los personales.
 - Verificar en Safari real que el vídeo se reproduce desde la carpeta de Drive y que el formato elegido (MP4 o WebM) es compatible.
 - Fase 4 restante: estadísticas/racha, paleta por obra y moodboard.
 - Pruebas unitarias de la lógica de imagen (requieren simular `heic2any` y canvas).

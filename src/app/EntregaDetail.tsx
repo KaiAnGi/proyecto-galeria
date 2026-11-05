@@ -4,6 +4,7 @@ import { saveEntrega } from '../features/gallery/persistence'
 import { useGalleryData } from '../features/gallery/useGalleryData'
 import { enqueueSave } from '../features/gallery/saveQueue'
 import { queueEntregaTrash } from '../features/gallery/trashQueue'
+import { syncEntregaToCalendar } from '../features/googleCalendar/sync'
 import { es } from '../i18n/es'
 import { MoonSticker } from '../components/Stickers'
 import CuteComment from '../components/CuteComment'
@@ -43,7 +44,12 @@ export default function EntregaDetail() {
   }
 
   function persist(updated: Entrega) {
-    void enqueueSave((token) => saveEntrega(token, updated)).catch(() => undefined)
+    void enqueueSave(async (token) => {
+      await saveEntrega(token, updated)
+      await syncEntregaToCalendar(token, updated).catch((error) => {
+        console.warn('Calendar sync failed', error)
+      })
+    }).catch(() => undefined)
   }
 
   function patch(changes: Partial<Entrega>) {

@@ -7,6 +7,7 @@ import { saveEntrega } from '../features/gallery/persistence'
 import { useGalleryData } from '../features/gallery/useGalleryData'
 import { enqueueSave } from '../features/gallery/saveQueue'
 import { queueEntregaTrash } from '../features/gallery/trashQueue'
+import { syncEntregaToCalendar } from '../features/googleCalendar/sync'
 import { es } from '../i18n/es'
 import { MoonSticker } from '../components/Stickers'
 import { PlusIcon } from '../components/Icons'
@@ -42,7 +43,12 @@ export default function Entregas() {
   const [fechaLimite, setFechaLimite] = useState('')
 
   function persist(entrega: Entrega) {
-    void enqueueSave((token) => saveEntrega(token, entrega)).catch(() => undefined)
+    void enqueueSave(async (token) => {
+      await saveEntrega(token, entrega)
+      await syncEntregaToCalendar(token, entrega).catch((error) => {
+        console.warn('Calendar sync failed', error)
+      })
+    }).catch(() => undefined)
   }
 
   function crear() {

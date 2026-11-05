@@ -9,7 +9,6 @@ import { friendlyError } from '../lib/errors/friendlyError'
 import { useGalleryStore } from '../features/gallery/store'
 import { SparkleSticker, HeartSticker, StarSticker } from '../components/Stickers'
 import AnniversaryBanner from '../components/AnniversaryBanner'
-import TogetherCounter from '../components/TogetherCounter'
 import HiddenLetter from '../components/HiddenLetter'
 import CalendarLetter from '../components/CalendarLetter'
 
@@ -147,7 +146,6 @@ export default function Home() {
         <h1 className="text-4xl sm:text-5xl font-bold gradient-text">{es.app.title}</h1>
         <p className="text-[var(--muted)] max-w-sm">{es.app.tagline}</p>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <TogetherCounter />
           <button
             type="button"
             onClick={() => setCalendarOpen(true)}
@@ -161,9 +159,6 @@ export default function Home() {
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-semibold text-white shadow">
-              {new Date().getDate()}
-            </span>
           </button>
         </div>
       </div>

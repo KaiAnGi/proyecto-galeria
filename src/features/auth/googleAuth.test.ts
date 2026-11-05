@@ -132,6 +132,86 @@ describe('googleAuth', () => {
     vi.useRealTimers()
   })
 
+  it('asks for Calendar permission only when it is needed', async () => {
+    localStorage.setItem('gallery-has-connected-v1', '1')
+    const calls: Array<{ scope: string; prompt?: string }> = []
+    ;(window as { google?: unknown }).google = {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            scope: string
+            callback: (resp: { access_token: string; expires_in: number; scope: string }) => void
+          }) => ({
+            requestAccessToken: (options?: { prompt?: string }) => {
+              calls.push({ scope: config.scope, prompt: options?.prompt })
+              config.callback({
+                access_token: config.scope.includes('calendar') ? 'calendar-token' : 'drive-token',
+                expires_in: 3600,
+                scope: config.scope,
+              })
+            },
+          }),
+        },
+      },
+    }
+
+    const auth = await import('./googleAuth')
+    const driveToken = await auth.ensureToken()
+    expect(driveToken).toBe('drive-token')
+    expect(auth.hasCalendarScope()).toBe(false)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toEqual({ scope: auth.DRIVE_SCOPE, prompt: '' })
+
+    const calendarToken = await auth.ensureCalendarToken()
+    expect(calendarToken).toBe('calendar-token')
+    expect(auth.hasCalendarScope()).toBe(true)
+    expect(calls).toHaveLength(2)
+    expect(calls[1].scope).toContain(auth.CALENDAR_SCOPE)
+    expect(calls[1].prompt).toBe('consent')
+  })
+
+  it('does not assume Calendar permission when Google omits the granted scopes', async () => {
+    localStorage.setItem('gallery-has-connected-v1', '1')
+    ;(window as { google?: unknown }).google = {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            callback: (resp: { access_token: string; expires_in: number }) => void
+          }) => ({
+            requestAccessToken: () => config.callback({ access_token: 'drive-token', expires_in: 3600 }),
+          }),
+        },
+      },
+    }
+
+    const auth = await import('./googleAuth')
+    await auth.ensureToken()
+
+    expect(auth.hasCalendarScope()).toBe(false)
+  })
+
+  it('restores the granted scopes from the tab session', async () => {
+    sessionStorage.setItem(
+      'gallery-auth-session-v1',
+      JSON.stringify({
+        accessToken: 'restored-token',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        scopes: [
+          'https://www.googleapis.com/auth/drive.file',
+          'https://www.googleapis.com/auth/calendar.app.created',
+        ],
+      }),
+    )
+    ;(window as { google?: unknown }).google = {
+      accounts: { oauth2: { initTokenClient: () => ({ requestAccessToken: vi.fn() }) } },
+    }
+
+    const auth = await import('./googleAuth')
+
+    expect(auth.hasCalendarScope()).toBe(true)
+    await expect(auth.ensureCalendarToken()).resolves.toBe('restored-token')
+  })
+
   it('persists the token for reloads in the same tab', async () => {
     ;(window as { google?: unknown }).google = {
       accounts: {

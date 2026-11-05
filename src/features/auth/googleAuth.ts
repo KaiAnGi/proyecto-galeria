@@ -1,5 +1,7 @@
 ﻿const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
-const SCOPES = 'https://www.googleapis.com/auth/drive.file'
+export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
+export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created'
+const SCOPES = `${DRIVE_SCOPE} ${CALENDAR_SCOPE}`
 const SESSION_KEY = 'gallery-auth-session-v1'
 const CONNECTED_KEY = 'gallery-has-connected-v1'
 const EXPIRY_SKEW_SECONDS = 60
@@ -11,6 +13,7 @@ type PromptMode = '' | 'select_account' | 'consent'
 interface TokenResponse {
   access_token?: string
   expires_in?: number
+  scope?: string
   error?: string
   error_description?: string
 }
@@ -63,6 +66,7 @@ export class AuthError extends Error {
 interface StoredSession {
   accessToken: string
   expiresAt: number
+  scopes?: string[]
 }
 
 interface PendingRequest {
@@ -74,7 +78,9 @@ interface PendingRequest {
 const listeners = new Set<() => void>()
 let token: string | null = null
 let expiresAt: number | null = null
+let grantedScopes: string[] = []
 let tokenClient: TokenClient | null = null
+let calendarTokenClient: TokenClient | null = null
 let gisPromise: Promise<void> | null = null
 let currentRequest: PendingRequest | null = null
 let renewPromise: Promise<string> | null = null
@@ -129,7 +135,11 @@ function readStoredSession(): StoredSession | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<StoredSession>
     if (typeof parsed.accessToken !== 'string' || typeof parsed.expiresAt !== 'number') return null
-    return { accessToken: parsed.accessToken, expiresAt: parsed.expiresAt }
+    return {
+      accessToken: parsed.accessToken,
+      expiresAt: parsed.expiresAt,
+      scopes: Array.isArray(parsed.scopes) ? parsed.scopes.filter((scope): scope is string => typeof scope === 'string') : [],
+    }
   } catch {
     return null
   }
@@ -138,7 +148,7 @@ function readStoredSession(): StoredSession | null {
 function persistSession(): void {
   if (!token || !expiresAt) return
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken: token, expiresAt }))
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken: token, expiresAt, scopes: grantedScopes }))
   } catch {
     // The token remains available in memory.
   }
@@ -158,6 +168,7 @@ function restoreSession(): void {
   if (stored && stored.expiresAt > now + EXPIRY_SKEW_SECONDS) {
     token = stored.accessToken
     expiresAt = stored.expiresAt
+    grantedScopes = stored.scopes ?? []
     hasConnectedBefore = true
     writeConnectedFlag()
     emit({ status: 'connected', token, hasConnectedBefore, error: null })
@@ -166,8 +177,14 @@ function restoreSession(): void {
 
   token = null
   expiresAt = null
+  grantedScopes = []
   clearStoredSession()
   emit({ status: 'disconnected', token: null, hasConnectedBefore, error: null })
+}
+
+function parseScopes(scope: string | undefined): string[] {
+  if (!scope) return [DRIVE_SCOPE]
+  return scope.split(/\s+/).filter(Boolean)
 }
 
 function storeToken(resp: TokenResponse): void {
@@ -175,6 +192,7 @@ function storeToken(resp: TokenResponse): void {
   token = resp.access_token
   const lifetime = typeof resp.expires_in === 'number' && resp.expires_in > 0 ? resp.expires_in : 3600
   expiresAt = Math.floor(Date.now() / 1000) + lifetime
+  grantedScopes = parseScopes(resp.scope)
   hasConnectedBefore = true
   writeConnectedFlag()
   persistSession()
@@ -191,6 +209,10 @@ export function hasValidToken(): boolean {
   return getToken() !== null
 }
 
+export function hasCalendarScope(): boolean {
+  return hasValidToken() && grantedScopes.includes(CALENDAR_SCOPE)
+}
+
 function shouldRenewSoon(): boolean {
   if (!token || !expiresAt) return true
   const now = Date.now() / 1000
@@ -203,12 +225,23 @@ function initTokenClient(): TokenClient {
 
   tokenClient = oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: handleTokenResponse,
+    error_callback: handleTokenError,
+  })
+  calendarTokenClient = oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
     scope: SCOPES,
     callback: handleTokenResponse,
     error_callback: handleTokenError,
   })
   gisReady = true
   emit({ gisReady: true })
+  return tokenClient
+}
+
+function renewClient(): TokenClient | null {
+  if (grantedScopes.includes(CALENDAR_SCOPE) && calendarTokenClient) return calendarTokenClient
   return tokenClient
 }
 
@@ -285,16 +318,20 @@ function handleTokenError(err: TokenError): void {
   request?.reject(new AuthError(message))
 }
 
-function requestToken(prompt: PromptMode, mode: 'connect' | 'renew'): Promise<string> {
-  if (mode === 'renew' && hasValidToken() && !shouldRenewSoon()) {
+function requestToken(
+  prompt: PromptMode,
+  mode: 'connect' | 'renew',
+  force = false,
+  selectedClient?: TokenClient | null,
+): Promise<string> {
+  if (!force && mode === 'renew' && hasValidToken() && !shouldRenewSoon()) {
     return Promise.resolve(token as string)
   }
   if (renewPromise) return renewPromise
-  if (!tokenClient) {
+  const client = selectedClient ?? tokenClient
+  if (!client) {
     return Promise.reject(new AuthError('Google Identity Services no disponible'))
   }
-
-  const client = tokenClient
   emit({ status: mode === 'connect' ? 'connecting' : 'renewing', error: null })
 
   renewPromise = new Promise<string>((resolve, reject) => {
@@ -336,7 +373,22 @@ export async function signInWithGoogle(): Promise<string> {
 }
 
 export function renewToken(): Promise<string> {
-  return requestToken('', 'renew')
+  return requestToken('', 'renew', false, renewClient())
+}
+
+export async function ensureCalendarToken(): Promise<string> {
+  const valid = getToken()
+  if (valid && hasCalendarScope()) return valid
+  if (!hasConnectedBefore) throw new AuthError('Todavía no has conectado tu Drive')
+  if (renewPromise) {
+    await renewPromise.catch(() => undefined)
+    const renewed = getToken()
+    if (renewed && hasCalendarScope()) return renewed
+  }
+  if (!calendarTokenClient) {
+    await preloadGoogleAuth()
+  }
+  return requestToken('consent', 'renew', true, calendarTokenClient)
 }
 
 export async function ensureToken(): Promise<string> {
@@ -347,12 +399,13 @@ export async function ensureToken(): Promise<string> {
   if (!tokenClient) {
     await preloadGoogleAuth()
   }
-  return requestToken('', 'renew')
+  return requestToken('', 'renew', false, renewClient())
 }
 
 export function disconnectGoogle(): void {
   token = null
   expiresAt = null
+  grantedScopes = []
   hasConnectedBefore = false
   clearStoredSession()
   try {
