@@ -183,11 +183,7 @@ export default function Home() {
 
       {showMenu && (
         <div className="w-full max-w-xl flex flex-col items-center gap-4 fade-up" style={{ animationDelay: '0.12s' }}>
-          {rootId && (
-            <p className="chip">
-              {es.app.rootFolderId}: {rootId}
-            </p>
-          )}
+          {rootId && <p className="chip">{es.app.easterEggs}</p>}
 
           {sessionError && !error && (
             <div className="panel w-full p-4 text-center flex flex-col items-center gap-3">
