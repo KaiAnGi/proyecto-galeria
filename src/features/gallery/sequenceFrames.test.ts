@@ -58,5 +58,9 @@ describe('sequenceFrames', () => {
     expect(sequenceDuration([frame('a', 0)], 0)).toBe(1)
   })
 
+  it('counts held exposures in the duration', () => {
+    const frames = [frame('a', 0), { ...frame('b', 1), hold: 3 }]
 
+    expect(sequenceDuration(frames, 12)).toBeCloseTo(4 / 12)
+  })
 })

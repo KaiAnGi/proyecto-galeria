@@ -12,6 +12,7 @@ const FRAME_CONCURRENCY = 3
 export interface DraftFrame {
   id: string
   orden: number
+  hold?: number
   existing?: Frame['drive']
   blob?: Blob
   original?: File
@@ -29,18 +30,39 @@ export interface SequenceDraft {
   videoMime?: string
   miniatura: string
   coleccionIds: string[]
+  portadaFrameId?: string
+  bucleRango?: [number, number]
+  exportSettings?: {
+    width?: number
+    height?: number
+    repeats?: number
+    background?: 'black' | 'white'
+  }
   dirty: boolean
 }
 
+export interface DraftHistory {
+  past: SequenceDraft[]
+  future: SequenceDraft[]
+}
+
+const HISTORY_LIMIT = 50
+
 interface DraftState {
   drafts: Record<string, SequenceDraft>
+  histories: Record<string, DraftHistory>
   putDraft: (draft: SequenceDraft) => void
   updateDraft: (id: string, updater: (draft: SequenceDraft) => SequenceDraft) => void
+  commitDraft: (id: string, updater: (draft: SequenceDraft) => SequenceDraft) => void
+  undoDraft: (id: string) => void
+  redoDraft: (id: string) => void
+  clearHistory: (id: string) => void
   removeDraft: (id: string) => void
 }
 
 export const useSequenceDrafts = create<DraftState>((set) => ({
   drafts: {},
+  histories: {},
   putDraft: (draft) => set((state) => ({ drafts: { ...state.drafts, [draft.id]: draft } })),
   updateDraft: (id, updater) =>
     set((state) => {
@@ -50,13 +72,74 @@ export const useSequenceDrafts = create<DraftState>((set) => ({
       if (next === current) return state
       return { drafts: { ...state.drafts, [id]: { ...next, dirty: true } } }
     }),
+  commitDraft: (id, updater) =>
+    set((state) => {
+      const current = state.drafts[id]
+      if (!current) return state
+      const next = updater(current)
+      if (next === current) return state
+      const history = state.histories[id] ?? { past: [], future: [] }
+      return {
+        drafts: { ...state.drafts, [id]: { ...next, dirty: true } },
+        histories: {
+          ...state.histories,
+          [id]: {
+            past: [...history.past, current].slice(-HISTORY_LIMIT),
+            future: [],
+          },
+        },
+      }
+    }),
+  undoDraft: (id) =>
+    set((state) => {
+      const current = state.drafts[id]
+      const history = state.histories[id]
+      if (!current || !history || history.past.length === 0) return state
+      const previous = history.past[history.past.length - 1]
+      return {
+        drafts: { ...state.drafts, [id]: { ...previous, dirty: true } },
+        histories: {
+          ...state.histories,
+          [id]: {
+            past: history.past.slice(0, -1),
+            future: [current, ...history.future].slice(0, HISTORY_LIMIT),
+          },
+        },
+      }
+    }),
+  redoDraft: (id) =>
+    set((state) => {
+      const current = state.drafts[id]
+      const history = state.histories[id]
+      if (!current || !history || history.future.length === 0) return state
+      const [next, ...future] = history.future
+      return {
+        drafts: { ...state.drafts, [id]: { ...next, dirty: true } },
+        histories: {
+          ...state.histories,
+          [id]: {
+            past: [...history.past, current].slice(-HISTORY_LIMIT),
+            future,
+          },
+        },
+      }
+    }),
+  clearHistory: (id) =>
+    set((state) => {
+      if (!state.histories[id]) return state
+      const histories = { ...state.histories }
+      delete histories[id]
+      return { histories }
+    }),
   removeDraft: (id) =>
     set((state) => {
       const current = state.drafts[id]
       if (current) revokeDraftUrls(current)
       const drafts = { ...state.drafts }
       delete drafts[id]
-      return { drafts }
+      const histories = { ...state.histories }
+      delete histories[id]
+      return { drafts, histories }
     }),
 }))
 
@@ -77,6 +160,7 @@ export function createDraftFromSequence(sequence: Secuencia): SequenceDraft {
     frames: sortFrames(sequence.frames).map((frame, index) => ({
       id: frame.id,
       orden: index,
+      ...(frame.hold && frame.hold > 1 ? { hold: frame.hold } : {}),
       existing: frame.drive,
     })),
     folderId: sequence.folderId,
@@ -84,6 +168,9 @@ export function createDraftFromSequence(sequence: Secuencia): SequenceDraft {
     videoMime: sequence.videoMime,
     miniatura: sequence.miniatura,
     coleccionIds: sequence.coleccionIds ?? [],
+    portadaFrameId: sequence.portadaFrameId,
+    bucleRango: sequence.bucleRango,
+    exportSettings: sequence.exportSettings,
     dirty: false,
   }
 }

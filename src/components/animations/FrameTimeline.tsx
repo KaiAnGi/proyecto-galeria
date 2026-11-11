@@ -2,28 +2,33 @@ import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from
 import { es } from '../../i18n/es'
 import type { FrameMedia } from '../../features/gallery/useSequenceMedia'
 import type { DraftFrame } from '../../features/gallery/sequenceDrafts'
+import { clampHold } from '../../features/gallery/frameTiming'
 import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, ImagesIcon, TrashIcon } from '../Icons'
 
 interface FrameTimelineProps {
   frames: DraftFrame[]
   currentIndex: number
   media: Record<string, FrameMedia>
+  coverFrameId?: string
   disabled: boolean
   onSelect: (index: number) => void
   onMove: (from: number, to: number) => void
   onDelete: (frame: DraftFrame) => void
   onAddFiles: (files: File[]) => void
+  onRetry?: (frame: DraftFrame) => void
 }
 
 export default function FrameTimeline({
   frames,
   currentIndex,
   media,
+  coverFrameId,
   disabled,
   onSelect,
   onMove,
   onDelete,
   onAddFiles,
+  onRetry,
 }: FrameTimelineProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -159,8 +164,22 @@ export default function FrameTimeline({
                     {item?.status === 'error' ? '!' : '…'}
                   </span>
                 )}
-                <span className="absolute left-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                  {index + 1}
+                <span className="absolute left-1 top-1 flex items-center gap-1">
+                  <span className="rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">{index + 1}</span>
+                  {clampHold(frame.hold) > 1 && (
+                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {es.pencil.holdShort(clampHold(frame.hold))}
+                    </span>
+                  )}
+                  {coverFrameId === frame.id && (
+                    <span
+                      aria-label={es.pencil.coverBadge}
+                      title={es.pencil.coverBadge}
+                      className="rounded-full bg-[#ffd166] px-1.5 py-0.5 text-[10px] font-semibold text-black"
+                    >
+                      ★
+                    </span>
+                  )}
                 </span>
               </button>
               <button
@@ -182,7 +201,19 @@ export default function FrameTimeline({
                 >
                   <ChevronLeftIcon className="h-4 w-4" />
                 </button>
-                <span className="text-xs text-[var(--muted)]">{index + 1}</span>
+                {item?.status === 'error' && onRetry ? (
+                  <button
+                    type="button"
+                    onClick={() => onRetry(frame)}
+                    disabled={disabled}
+                    aria-label={es.pencil.retryFrame}
+                    className="btn btn-soft min-h-11 min-w-11 px-1 text-xs"
+                  >
+                    ↻
+                  </button>
+                ) : (
+                  <span className="text-xs text-[var(--muted)]">{index + 1}</span>
+                )}
                 <button
                   type="button"
                   onClick={() => onMove(index, index + 1)}

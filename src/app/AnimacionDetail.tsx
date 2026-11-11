@@ -2,15 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useGalleryStore } from '../features/gallery/store'
 import { useGalleryData } from '../features/gallery/useGalleryData'
-import { useSequenceMedia } from '../features/gallery/useSequenceMedia'
+import { useSequenceMedia, type FrameMedia } from '../features/gallery/useSequenceMedia'
 import { useSequencePlayer } from '../features/gallery/useSequencePlayer'
+import { useFrameImages } from '../features/gallery/useFrameImages'
 import { queueSecuenciaTrash } from '../features/gallery/trashQueue'
 import { saveSequenceDraft, type SequenceSaveProgress } from '../features/gallery/sequenceSave'
+import { clampHold, normalizeRange, type LoopRange, type PlaybackMode, type PlaybackSpeed } from '../features/gallery/frameTiming'
+import {
+  deleteDraftFromStorage,
+  loadDraftFromStorage,
+  saveDraftToStorage,
+} from '../features/gallery/draftStorage'
 import {
   appendFramesToDraft,
   createDraftFromSequence,
   discardDraft,
-  insertDraftFrame,
   moveDraftFrame,
   normalizeDraftFrames,
   prepareDraftFrames,
@@ -24,8 +30,11 @@ import { friendlyError } from '../lib/errors/friendlyError'
 import { es } from '../i18n/es'
 import { PencilIcon, SaveIcon, TrashIcon } from '../components/Icons'
 import CuteComment from '../components/CuteComment'
+import AnimationStage, { type StageBackground } from '../components/animations/AnimationStage'
 import FrameTimeline from '../components/animations/FrameTimeline'
 import PlaybackTransport from '../components/animations/PlaybackTransport'
+import ShortcutsHelp from '../components/animations/ShortcutsHelp'
+import { useEditorShortcuts } from '../components/animations/useEditorShortcuts'
 
 interface RemovedFrame {
   frame: DraftFrame
@@ -46,10 +55,24 @@ export default function AnimacionDetail() {
   const navigate = useNavigate()
   const sequence = useGalleryStore((state) => state.secuencias.find((item) => item.id === id))
   const draft = useSequenceDrafts((state) => state.drafts[id])
+  const history = useSequenceDrafts((state) => state.histories[id])
   const putDraft = useSequenceDrafts((state) => state.putDraft)
   const updateDraft = useSequenceDrafts((state) => state.updateDraft)
+  const commitDraft = useSequenceDrafts((state) => state.commitDraft)
+  const undoDraft = useSequenceDrafts((state) => state.undoDraft)
+  const redoDraft = useSequenceDrafts((state) => state.redoDraft)
+  const clearHistory = useSequenceDrafts((state) => state.clearHistory)
   const { state, error: loadError, retry, hasConnectedBefore } = useGalleryData()
   const [onion, setOnion] = useState(false)
+  const [onionOpacity, setOnionOpacity] = useState(0.35)
+  const [onionPrevious, setOnionPrevious] = useState(true)
+  const [onionNext, setOnionNext] = useState(false)
+  const [speed, setSpeed] = useState<PlaybackSpeed>(1)
+  const [pingPong, setPingPong] = useState(false)
+  const [background, setBackground] = useState<StageBackground>('checker')
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [resetSignal, setResetSignal] = useState(0)
+  const [draftNotice, setDraftNotice] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [addProgress, setAddProgress] = useState<{ done: number; total: number } | null>(null)
   const [addError, setAddError] = useState<string | null>(null)
@@ -59,17 +82,52 @@ export default function AnimacionDetail() {
   const [removedFrame, setRemovedFrame] = useState<RemovedFrame | null>(null)
   const pendingSelectRef = useRef<number | null>(null)
   const undoRef = useRef<{ frame: DraftFrame; index: number; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const mediaRef = useRef<Record<string, FrameMedia>>({})
 
   useEffect(() => {
     if (draft || !sequence) return
-    putDraft(createDraftFromSequence(sequence))
+    let cancelled = false
+    void loadDraftFromStorage(sequence.id).then((stored) => {
+      if (cancelled) return
+      if (useSequenceDrafts.getState().drafts[sequence.id]) return
+      putDraft(stored && stored.dirty ? stored : createDraftFromSequence(sequence))
+    })
+    return () => {
+      cancelled = true
+    }
   }, [draft, sequence, putDraft])
 
+  useEffect(() => {
+    if (!draft?.dirty) return
+    let cancelled = false
+    const timer = setTimeout(() => {
+      void saveDraftToStorage(draft).then((saved) => {
+        if (!cancelled) setDraftNotice(saved ? es.pencil.draftSaved : es.pencil.draftSaveError)
+      })
+    }, 900)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [draft])
+
   const frames = useMemo(() => (draft ? sortDraftFrames(draft.frames) : []), [draft])
+  const frameHolds = useMemo(() => frames.map((frame) => clampHold(frame.hold)), [frames])
+  const range = normalizeRange(
+    draft?.bucleRango ? { start: draft.bucleRango[0], end: draft.bucleRango[1] } : undefined,
+    frames.length,
+  )
+  const loopMode: PlaybackMode = pingPong ? 'pingpong' : draft?.bucle ? 'loop' : 'once'
   const player = useSequencePlayer({
-    frameCount: frames.length,
+    frameHolds,
     fps: draft?.fps ?? 12,
-    loop: draft?.bucle ?? true,
+    mode: loopMode,
+    range,
+    speed,
+    isReady: (frameIndex) => {
+      const frame = frames[frameIndex]
+      return !frame || mediaRef.current[frame.id]?.status === 'ready'
+    },
   })
   const currentFrame = frames[player.index]
   const remoteFrames = useMemo(
@@ -79,9 +137,9 @@ export default function AnimacionDetail() {
         .map((frame) => ({ id: frame.id, orden: frame.orden, drive: frame.existing! })),
     [frames],
   )
-  const remoteMedia = useSequenceMedia(remoteFrames, currentFrame?.id)
+  const { media: remoteMedia, retry: retryFrame } = useSequenceMedia(remoteFrames, currentFrame?.id)
   const media = useMemo(() => {
-    const result: Record<string, (typeof remoteMedia)[string]> = {}
+    const result: Record<string, FrameMedia> = {}
     for (const frame of frames) {
       result[frame.id] = frame.previewUrl
         ? { url: frame.previewUrl, status: 'ready' }
@@ -90,20 +148,51 @@ export default function AnimacionDetail() {
     return result
   }, [frames, remoteMedia])
 
+  useEffect(() => {
+    mediaRef.current = media
+  }, [media])
+
+  const wrapping = loopMode !== 'once'
   const previousFrame =
-    onion && !player.playing && frames.length > 1
+    onion && frames.length > 1
       ? player.index > 0
         ? frames[player.index - 1]
-        : draft?.bucle
+        : wrapping
           ? frames[frames.length - 1]
           : undefined
       : undefined
-  const previousMedia = previousFrame ? media[previousFrame.id] : undefined
+  const nextFrame =
+    onion && frames.length > 1
+      ? player.index < frames.length - 1
+        ? frames[player.index + 1]
+        : wrapping
+          ? frames[0]
+          : undefined
+      : undefined
   const currentMedia = currentFrame ? media[currentFrame.id] : undefined
+  const images = useFrameImages(media, [previousFrame?.id, currentFrame?.id, nextFrame?.id])
+  const currentImage = currentFrame ? images[currentFrame.id] : undefined
+  const stageStatus =
+    frames.length === 0
+      ? 'empty'
+      : currentMedia?.status === 'error'
+        ? 'error'
+        : currentImage
+          ? 'ready'
+          : 'loading'
+
+  useEffect(() => {
+    const target = player.waitingFor
+    if (target === null) return
+    const frame = frames[target]
+    if (!frame || !images[frame.id]) return
+    player.seekFrame(target)
+    player.play()
+  }, [player, frames, images])
 
   useEffect(() => {
     if (pendingSelectRef.current === null || pendingSelectRef.current >= frames.length) return
-    player.seek(pendingSelectRef.current)
+    player.seekFrame(pendingSelectRef.current)
     pendingSelectRef.current = null
   }, [frames.length, player])
 
@@ -128,24 +217,80 @@ export default function AnimacionDetail() {
     [],
   )
 
+  useEditorShortcuts({
+    enabled: Boolean(draft) && !saving && !adding,
+    onTogglePlay: () => {
+      player.pause()
+      player.toggle()
+    },
+    onPrevious: () => player.step(-1),
+    onNext: () => player.step(1),
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onToggleOnion: () => setOnion((value) => !value),
+    onHelp: () => setHelpOpen(true),
+  })
+
   function finalizeRemovedFrame(): void {
     const pending = undoRef.current
     if (!pending) return
     clearTimeout(pending.timer)
-    if (pending.frame.previewUrl) URL.revokeObjectURL(pending.frame.previewUrl)
     undoRef.current = null
     setRemovedFrame(null)
   }
 
   function handleSeek(index: number) {
     player.pause()
-    player.seek(index)
+    player.seekFrame(index)
+  }
+
+  function handleUndo() {
+    player.pause()
+    undoDraft(id)
+  }
+
+  function handleRedo() {
+    player.pause()
+    redoDraft(id)
+  }
+
+  function handleLoopMode(value: PlaybackMode) {
+    if (value === 'pingpong') {
+      setPingPong(true)
+      if (draft && !draft.bucle) updateDraft(id, (current) => ({ ...current, bucle: true }))
+      return
+    }
+    setPingPong(false)
+    updateDraft(id, (current) => ({ ...current, bucle: value === 'loop' }))
+  }
+
+  function handleRange(value: LoopRange | null) {
+    updateDraft(id, (current) => ({
+      ...current,
+      bucleRango: value ? [value.start, value.end] : undefined,
+    }))
+  }
+
+  function handleHold(value: number) {
+    if (!currentFrame) return
+    const frameId = currentFrame.id
+    commitDraft(id, (current) => ({
+      ...current,
+      frames: current.frames.map((frame) =>
+        frame.id === frameId ? { ...frame, hold: value > 1 ? value : undefined } : frame,
+      ),
+    }))
+  }
+
+  function handleBackground() {
+    setBackground((value) => (value === 'checker' ? 'black' : value === 'black' ? 'white' : 'checker'))
   }
 
   function handleDeleteAnimation() {
     player.pause()
     if (sequence) queueSecuenciaTrash(sequence)
     discardDraft(id)
+    void deleteDraftFromStorage(id)
     navigate('/animaciones')
   }
 
@@ -153,11 +298,11 @@ export default function AnimacionDetail() {
     if (!draft) return
     player.pause()
     const selectedId = frames[player.index]?.id
-    updateDraft(id, (current) => moveDraftFrame(current, from, to))
+    commitDraft(id, (current) => moveDraftFrame(current, from, to))
     if (!selectedId) return
     const next = sortDraftFrames(moveDraftFrame(draft, from, to).frames)
     const nextIndex = next.findIndex((frame) => frame.id === selectedId)
-    if (nextIndex >= 0) player.seek(nextIndex)
+    if (nextIndex >= 0) player.seekFrame(nextIndex)
   }
 
   function handleDelete(frame: DraftFrame) {
@@ -166,11 +311,10 @@ export default function AnimacionDetail() {
     finalizeRemovedFrame()
     const index = frames.findIndex((item) => item.id === frame.id)
     if (index < 0) return
-    updateDraft(id, (current) => removeDraftFrame(current, frame.id))
+    commitDraft(id, (current) => removeDraftFrame(current, frame.id))
     setRemovedFrame({ frame, index })
     const timer = setTimeout(() => {
       undoRef.current = null
-      if (frame.previewUrl) URL.revokeObjectURL(frame.previewUrl)
       setRemovedFrame(null)
     }, UNDO_MS)
     undoRef.current = { frame, index, timer }
@@ -183,7 +327,7 @@ export default function AnimacionDetail() {
     clearTimeout(pending.timer)
     undoRef.current = null
     setRemovedFrame(null)
-    updateDraft(id, (current) => insertDraftFrame(current, pending.frame, pending.index))
+    undoDraft(id)
     pendingSelectRef.current = pending.index
   }
 
@@ -195,7 +339,7 @@ export default function AnimacionDetail() {
     const start = frames.length
     try {
       const prepared = await prepareDraftFrames(files, start, (done, total) => setAddProgress({ done, total }))
-      updateDraft(id, (current) => appendFramesToDraft(current, prepared.frames))
+      commitDraft(id, (current) => appendFramesToDraft(current, prepared.frames))
       pendingSelectRef.current = start
     } catch (error) {
       console.error('Add frames failed', error)
@@ -235,7 +379,10 @@ export default function AnimacionDetail() {
         dirty: false,
       }
       putDraft(nextDraft)
+      clearHistory(id)
+      setDraftNotice(null)
       finalizeRemovedFrame()
+      void deleteDraftFromStorage(id)
     } catch (error) {
       console.error('Save animation failed', error)
       setSaveError(friendlyError(error, es.pencil.saveError))
@@ -277,6 +424,13 @@ export default function AnimacionDetail() {
       </div>
     )
   }
+
+  const backgroundLabel =
+    background === 'checker'
+      ? es.pencil.backgroundChecker
+      : background === 'black'
+        ? es.pencil.backgroundBlack
+        : es.pencil.backgroundWhite
 
   return (
     <div className="flex min-h-full flex-col gap-4 p-4 pb-0 sm:p-6 sm:pb-0">
@@ -336,27 +490,126 @@ export default function AnimacionDetail() {
         </p>
       </div>
 
-      <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl overflow-hidden rounded-2xl border-2 border-[var(--border)] bg-black shadow-lg">
-        {previousMedia?.url && (
-          <img
-            src={previousMedia.url}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-contain opacity-40"
-          />
-        )}
-        {currentMedia?.url ? (
-          <img
-            src={currentMedia.url}
-            alt={es.pencil.frameAlt(player.index + 1)}
-            className="absolute inset-0 h-full w-full object-contain"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-[var(--muted)]">
-            {currentMedia?.status === 'error' ? es.pencil.loadFramesError : '…'}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={handleUndo}
+          disabled={saving || !history?.past.length}
+          aria-label={es.pencil.undoEdit}
+          className="btn btn-soft min-h-11 min-w-11 px-2"
+        >
+          ↶
+        </button>
+        <button
+          type="button"
+          onClick={handleRedo}
+          disabled={saving || !history?.future.length}
+          aria-label={es.pencil.redoEdit}
+          className="btn btn-soft min-h-11 min-w-11 px-2"
+        >
+          ↷
+        </button>
+        <button
+          type="button"
+          onClick={handleBackground}
+          aria-label={es.pencil.backgroundLabel(backgroundLabel)}
+          className="btn btn-soft min-h-11 text-sm"
+        >
+          {backgroundLabel}
+        </button>
+        <button
+          type="button"
+          onClick={() => setResetSignal((value) => value + 1)}
+          className="btn btn-soft min-h-11 text-sm"
+        >
+          {es.pencil.resetView}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!currentFrame) return
+            updateDraft(id, (current) => ({ ...current, portadaFrameId: currentFrame.id }))
+          }}
+          disabled={!currentFrame || draft.portadaFrameId === currentFrame?.id}
+          className="btn btn-soft min-h-11 text-sm"
+        >
+          {es.pencil.setCover}
+        </button>
+        <details className="relative">
+          <summary className="btn btn-soft min-h-11 cursor-pointer list-none text-sm">
+            {es.pencil.exportSettings}
+          </summary>
+          <div className="popover left-0 w-64">
+            <p className="text-sm font-semibold">{es.pencil.exportOptions}</p>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>{es.pencil.exportRepeats}</span>
+              <select
+                value={draft.exportSettings?.repeats ?? 1}
+                onChange={(event) =>
+                  updateDraft(id, (current) => ({
+                    ...current,
+                    exportSettings: { ...current.exportSettings, repeats: Number(event.target.value) },
+                  }))
+                }
+                className="field text-sm"
+              >
+                {[1, 2, 3].map((value) => (
+                  <option key={value} value={value}>
+                    {es.pencil.exportRepeatsValue(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <fieldset className="flex flex-col gap-1">
+              <legend className="text-sm">{es.pencil.exportBackground}</legend>
+              <div className="flex gap-2">
+                {(['black', 'white'] as const).map((value) => (
+                  <label key={value} className="flex min-h-11 flex-1 items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="export-background"
+                      value={value}
+                      checked={(draft.exportSettings?.background ?? 'black') === value}
+                      onChange={() =>
+                        updateDraft(id, (current) => ({
+                          ...current,
+                          exportSettings: { ...current.exportSettings, background: value },
+                        }))
+                      }
+                      className="h-4 w-4 accent-[var(--accent)]"
+                    />
+                    {value === 'black' ? es.pencil.backgroundBlack : es.pencil.backgroundWhite}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <p className="text-xs text-[var(--muted)]">{es.pencil.exportHint}</p>
           </div>
-        )}
+        </details>
+        <button
+          type="button"
+          onClick={() => setHelpOpen(true)}
+          className="btn btn-soft min-h-11 text-sm"
+        >
+          {es.pencil.shortcuts}
+        </button>
+        {draftNotice && <span className="ml-auto text-xs text-[var(--muted)]">{draftNotice}</span>}
       </div>
+
+      <AnimationStage
+        current={currentImage}
+        previous={previousFrame ? images[previousFrame.id] : undefined}
+        next={nextFrame ? images[nextFrame.id] : undefined}
+        status={stageStatus}
+        showOnion={onion && !player.playing}
+        onionPrevious={onionPrevious}
+        onionNext={onionNext}
+        onionOpacity={onionOpacity}
+        background={background}
+        label={es.pencil.stageLabel(player.index + 1, frames.length)}
+        resetSignal={resetSignal}
+        onRetry={() => currentFrame && retryFrame(currentFrame.id)}
+      />
 
       {addError && <p className="text-sm text-[#ff9db1]">{addError}</p>}
       {saveError && <p className="text-sm text-[#ff9db1]">{saveError}</p>}
@@ -384,11 +637,13 @@ export default function AnimacionDetail() {
         frames={frames}
         currentIndex={player.index}
         media={media}
+        coverFrameId={draft.portadaFrameId}
         disabled={adding || saving}
         onSelect={handleSeek}
         onMove={handleMove}
         onDelete={handleDelete}
         onAddFiles={(files) => void handleAddFiles(files)}
+        onRetry={(frame) => retryFrame(frame.id)}
       />
 
       <div className="mt-auto">
@@ -396,19 +651,36 @@ export default function AnimacionDetail() {
           currentIndex={player.index}
           total={frames.length}
           playing={player.playing}
-          loop={draft.bucle}
+          waiting={player.waiting}
+          loopMode={loopMode}
+          speed={speed}
           onion={onion}
+          onionOpacity={onionOpacity}
+          onionPrevious={onionPrevious}
+          onionNext={onionNext}
           fps={draft.fps}
+          hold={clampHold(currentFrame?.hold)}
+          tick={player.tick}
+          tickCount={player.tickCount}
+          range={range}
           disabled={saving}
           onPrevious={() => player.step(-1)}
           onNext={() => player.step(1)}
           onToggle={player.toggle}
           onSeek={handleSeek}
-          onLoop={(value) => updateDraft(id, (current) => ({ ...current, bucle: value }))}
+          onLoopMode={handleLoopMode}
+          onSpeed={setSpeed}
           onOnion={setOnion}
+          onOnionOpacity={setOnionOpacity}
+          onOnionPrevious={setOnionPrevious}
+          onOnionNext={setOnionNext}
           onFps={(value) => updateDraft(id, (current) => ({ ...current, fps: value }))}
+          onHold={handleHold}
+          onRange={handleRange}
         />
       </div>
+
+      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <CuteComment />
     </div>
   )

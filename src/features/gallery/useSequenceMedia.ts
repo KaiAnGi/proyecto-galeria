@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { downloadFileAsBlob } from '../drive/driveImageClient'
 import { mapWithConcurrency } from '../../lib/async/mapWithConcurrency'
@@ -28,15 +28,33 @@ function prioritizeFrames(frames: Frame[], currentId: string | undefined): Frame
   return ordered
 }
 
-export function useSequenceMedia(
-  frames: Frame[],
-  currentFrameId: string | undefined,
-): Record<string, FrameMedia> {
+export interface SequenceMediaResult {
+  media: Record<string, FrameMedia>
+  retry: (frameId: string) => void
+}
+
+export function useSequenceMedia(frames: Frame[], currentFrameId: string | undefined): SequenceMediaResult {
   const { token } = useAuth()
   const urls = useRef(new Map<string, string>())
   const inFlight = useRef(new Set<string>())
   const failed = useRef(new Set<string>())
   const [loaded, setLoaded] = useState<Record<string, FrameMedia>>({})
+  const [retryTokens, setRetryTokens] = useState<Record<string, number>>({})
+
+  const retry = useCallback((frameId: string) => {
+    const url = urls.current.get(frameId)
+    if (url) {
+      URL.revokeObjectURL(url)
+      urls.current.delete(frameId)
+    }
+    failed.current.delete(frameId)
+    setLoaded((current) => {
+      const next = { ...current }
+      delete next[frameId]
+      return next
+    })
+    setRetryTokens((current) => ({ ...current, [frameId]: (current[frameId] ?? 0) + 1 }))
+  }, [])
 
   useEffect(() => {
     if (!token) return
@@ -85,7 +103,7 @@ export function useSequenceMedia(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [token, frames, currentFrameId])
+  }, [token, frames, currentFrameId, retryTokens])
 
   useEffect(
     () => () => {
@@ -102,6 +120,6 @@ export function useSequenceMedia(
     for (const frame of frames) {
       media[frame.id] = loaded[frame.id] ?? { status: 'idle' }
     }
-    return media
-  }, [frames, loaded])
+    return { media, retry }
+  }, [frames, loaded, retry])
 }

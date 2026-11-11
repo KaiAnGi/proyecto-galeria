@@ -123,6 +123,21 @@ describe('AnimacionDetail', () => {
     expect(await screen.findByText('Animación guardada')).toBeTruthy()
   })
 
+  it('changes the hold of the current frame and can undo it', async () => {
+    renderEditor()
+    await screen.findByDisplayValue('Olas')
+
+    fireEvent.click(screen.getByLabelText('Más tiempo en este fotograma'))
+
+    expect(screen.getAllByText('2×').length).toBeGreaterThan(0)
+    expect(screen.getByText('Cambios sin guardar')).toBeTruthy()
+    expect(screen.getByLabelText('Vista previa del fotograma 1 de 2')).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Retroceder'))
+
+    expect(screen.queryByText('2×')).toBeNull()
+  })
+
   it('toggles onion skin without marking changes', async () => {
     renderEditor()
     await screen.findByDisplayValue('Olas')

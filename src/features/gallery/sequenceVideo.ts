@@ -12,12 +12,23 @@ export interface SequenceVideo {
   extension: 'mp4' | 'webm'
 }
 
+export interface SequenceVideoOptions {
+  background?: 'black' | 'white'
+  width?: number
+  height?: number
+}
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function even(value: number): number {
   return Math.max(2, value - (value % 2))
+}
+
+function clampDimension(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback
+  return Math.max(240, Math.min(3840, Math.round(value)))
 }
 
 function isSupported(type: string): boolean {
@@ -45,8 +56,9 @@ function drawFrame(
   bitmap: ImageBitmap,
   width: number,
   height: number,
+  background: 'black' | 'white',
 ): void {
-  ctx.fillStyle = '#000'
+  ctx.fillStyle = background === 'white' ? '#fff' : '#000'
   ctx.fillRect(0, 0, width, height)
   const scale = Math.min(width / bitmap.width, height / bitmap.height)
   const drawWidth = Math.max(1, Math.round(bitmap.width * scale))
@@ -61,6 +73,7 @@ async function record(
   bitmaps: ImageBitmap[],
   fps: number,
   mime: string | undefined,
+  background: 'black' | 'white',
   onProgress?: (done: number, total: number) => void,
 ): Promise<SequenceVideo> {
   const ctx = canvas.getContext('2d')
@@ -80,14 +93,14 @@ async function record(
       recorder.onerror = () => reject(new Error('Video recording failed'))
     })
 
-    drawFrame(ctx, bitmaps[0], canvas.width, canvas.height)
+    drawFrame(ctx, bitmaps[0], canvas.width, canvas.height, background)
     recorder.start()
     onProgress?.(0, bitmaps.length)
     await wait(frameMs)
     onProgress?.(1, bitmaps.length)
 
     for (let index = 1; index < bitmaps.length; index += 1) {
-      drawFrame(ctx, bitmaps[index], canvas.width, canvas.height)
+      drawFrame(ctx, bitmaps[index], canvas.width, canvas.height, background)
       await wait(frameMs)
       onProgress?.(index + 1, bitmaps.length)
     }
@@ -111,6 +124,7 @@ export async function exportSequenceVideo(
   frames: Blob[],
   fps: number,
   onProgress?: (done: number, total: number) => void,
+  options: SequenceVideoOptions = {},
 ): Promise<SequenceVideo> {
   if (frames.length === 0) throw new Error('No frames to export')
   if (
@@ -127,8 +141,9 @@ export async function exportSequenceVideo(
 
   try {
     const first = bitmaps[0]
-    canvas.width = even(first.width)
-    canvas.height = even(first.height)
+    const background = options.background === 'white' ? 'white' : 'black'
+    canvas.width = even(clampDimension(options.width, first.width))
+    canvas.height = even(clampDimension(options.height, first.height))
 
     const supported = VIDEO_MIME_CANDIDATES.filter(isSupported)
     const candidates: (string | undefined)[] = [...supported, undefined]
@@ -136,7 +151,7 @@ export async function exportSequenceVideo(
 
     for (const mime of candidates) {
       try {
-        return await record(canvas, bitmaps, safeFps, mime, onProgress)
+        return await record(canvas, bitmaps, safeFps, mime, background, onProgress)
       } catch (error) {
         lastError = error
       }

@@ -8,6 +8,7 @@ import { saveSecuencia } from './persistence'
 import { enqueueSave } from './saveQueue'
 import { useGalleryStore } from './store'
 import { withUpdatedAt, type Frame, type Secuencia } from './secuencias'
+import { clampHold } from './frameTiming'
 import { safeFileName } from './sequenceNaming'
 import { sortDraftFrames, type SequenceDraft } from './sequenceDrafts'
 import { exportSequenceVideo } from './sequenceVideo'
@@ -70,10 +71,28 @@ export async function saveSequenceDraft(
       throw new Error('Frame image missing')
     })
 
-    onProgress?.({ stage: 'video', done: 0, total })
-    const video = await exportSequenceVideo(blobs, fps, (done, count) => {
-      onProgress?.({ stage: 'video', done, total: count })
-    })
+    const holds = ordered.map((frame) => clampHold(frame.hold))
+    const repeats = Math.max(1, Math.min(3, Math.round(draft.exportSettings?.repeats ?? 1)))
+    const videoFrames: Blob[] = []
+    for (let repeat = 0; repeat < repeats; repeat += 1) {
+      for (let index = 0; index < blobs.length; index += 1) {
+        for (let hold = 0; hold < holds[index]; hold += 1) videoFrames.push(blobs[index])
+      }
+    }
+
+    onProgress?.({ stage: 'video', done: 0, total: videoFrames.length })
+    const video = await exportSequenceVideo(
+      videoFrames,
+      fps,
+      (done, count) => {
+        onProgress?.({ stage: 'video', done, total: count })
+      },
+      {
+        background: draft.exportSettings?.background,
+        width: draft.exportSettings?.width,
+        height: draft.exportSettings?.height,
+      },
+    )
 
     const folders = await ensureAnimationFolders(token, draft.id, title, draft.folderId)
     const videoName = `${safeFileName(title)}.${video.extension}`
@@ -124,12 +143,16 @@ export async function saveSequenceDraft(
         return {
           id: frame.id,
           orden: index,
+          ...(frame.hold && frame.hold > 1 ? { hold: frame.hold } : {}),
           drive: { galeriaId, ...(originalId ? { originalId } : {}) },
         } satisfies Frame
       })
 
       onProgress?.({ stage: 'finishing', done: total, total })
-      const miniatura = await blobToThumbnailDataUrl(blobs[0]).catch(() => draft.miniatura)
+      const coverIndex = draft.portadaFrameId
+        ? Math.max(0, ordered.findIndex((frame) => frame.id === draft.portadaFrameId))
+        : 0
+      const miniatura = await blobToThumbnailDataUrl(blobs[coverIndex]).catch(() => draft.miniatura)
       const previous = useGalleryStore.getState().secuencias.find((sequence) => sequence.id === draft.id)
       const sequence: Secuencia = withUpdatedAt({
         schema: 1,
@@ -144,6 +167,9 @@ export async function saveSequenceDraft(
         videoMime: video.mime,
         miniatura,
         coleccionIds: previous?.coleccionIds ?? draft.coleccionIds,
+        portadaFrameId: draft.portadaFrameId,
+        bucleRango: draft.bucleRango,
+        exportSettings: draft.exportSettings,
       })
 
       await saveSecuencia(token, sequence)

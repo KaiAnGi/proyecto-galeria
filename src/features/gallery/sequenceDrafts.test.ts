@@ -50,7 +50,7 @@ function frame(id: string, orden: number): DraftFrame {
 }
 
 beforeEach(() => {
-  useSequenceDrafts.setState({ drafts: {} })
+  useSequenceDrafts.setState({ drafts: {}, histories: {} })
 })
 
 describe('sequenceDrafts', () => {
@@ -91,6 +91,50 @@ describe('sequenceDrafts', () => {
     expect(appended.frames.map((item) => item.orden)).toEqual([0, 1, 2, 3])
     expect(restored.frames.map((item) => item.id)).toEqual(['a', 'b', 'c'])
     expect(restored.frames.map((item) => item.orden)).toEqual([0, 1, 2])
+  })
+
+  it('copies holds and optional sequence settings into the draft', () => {
+    const result = createDraftFromSequence({
+      ...sequence,
+      frames: [
+        { id: 'a', orden: 0, hold: 3, drive: { galeriaId: 'gal-a' } },
+        { id: 'b', orden: 1, drive: { galeriaId: 'gal-b' } },
+      ],
+      portadaFrameId: 'a',
+      bucleRango: [0, 1],
+      exportSettings: { width: 1080, repeats: 2, background: 'white' },
+    })
+
+    expect(result.frames[0].hold).toBe(3)
+    expect(result.frames[1].hold).toBeUndefined()
+    expect(result.portadaFrameId).toBe('a')
+    expect(result.bucleRango).toEqual([0, 1])
+    expect(result.exportSettings).toEqual({ width: 1080, repeats: 2, background: 'white' })
+  })
+
+  it('undoes and redoes committed changes', () => {
+    useSequenceDrafts.getState().putDraft(draft([frame('a', 0), frame('b', 1)]))
+    const store = useSequenceDrafts.getState()
+
+    store.commitDraft('draft-1', (current) => removeDraftFrame(current, 'a'))
+    expect(useSequenceDrafts.getState().drafts['draft-1'].frames.map((item) => item.id)).toEqual(['b'])
+    expect(useSequenceDrafts.getState().histories['draft-1'].past).toHaveLength(1)
+
+    useSequenceDrafts.getState().undoDraft('draft-1')
+    expect(useSequenceDrafts.getState().drafts['draft-1'].frames.map((item) => item.id)).toEqual(['a', 'b'])
+    expect(useSequenceDrafts.getState().histories['draft-1'].future).toHaveLength(1)
+
+    useSequenceDrafts.getState().redoDraft('draft-1')
+    expect(useSequenceDrafts.getState().drafts['draft-1'].frames.map((item) => item.id)).toEqual(['b'])
+  })
+
+  it('does not add ordinary edits to the undo history', () => {
+    useSequenceDrafts.getState().putDraft(draft([frame('a', 0)]))
+    const store = useSequenceDrafts.getState()
+
+    store.updateDraft('draft-1', (current) => ({ ...current, titulo: 'Nuevo' }))
+
+    expect(useSequenceDrafts.getState().histories['draft-1']).toBeUndefined()
   })
 
   it('marks edits as unsaved and revokes local previews when discarded', () => {

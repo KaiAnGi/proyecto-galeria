@@ -33,11 +33,12 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 ### Fase 3 — Animación y clase (hecha)
 - Animaciones con biblioteca (`#/animaciones`) y editor (`#/animaciones/:id`); `/pencil-test` redirige a la biblioteca.
 - Creación guiada en un panel aparte: archivo, arrastrar, pegar o cámara; vista previa, reordenación y borrado local antes de abrir el editor.
-- Editor con transporte fijo, reproducción de 6 a 24 fps con presets, bucle, contador, barra de progreso y papel cebolla al 40 % solo en pausa.
-- Línea de tiempo con miniaturas por `frame.id`, selección visible, desplazamiento automático, reordenación con Pointer Events o botones y adición de fotogramas.
+- Editor con escenario canvas (proporción real, zoom con pinch/rueda/doble toque, fondos damero/negro/blanco), transporte fijo, reproducción de 6 a 24 fps con presets, bucle, ida y vuelta, velocidad 0,5x/1x/2x, holds de 1 a 12 ticks, tramo opcional, contador, barra de progreso y papel cebolla anterior/siguiente con intensidad ajustable.
+- Deshacer/rehacer, atajos de teclado y ayuda de atajos. El borrador se guarda en IndexedDB para sobrevivir a recargas y se borra al guardar o descartar.
+- Línea de tiempo con miniaturas por `frame.id`, selección visible, badge de hold, marca de portada, desplazamiento automático, reordenación con Pointer Events o botones, adición de fotogramas y reintento de imágenes fallidas.
 - Todo se edita sobre un borrador local: cambios, fotogramas nuevos y borrados no tocan Drive hasta pulsar "Guardar animación". Quitar un fotograma se puede deshacer durante 7 s y nunca se puede dejar una animación sin fotogramas.
-- Al guardar se crea un vídeo con `canvas.captureStream` y `MediaRecorder`, y una carpeta visible en la raíz con el título de la animación. Dentro quedan el vídeo, `Fotogramas/` y `Originales/`; el JSON de la secuencia sigue en `_interno/secuencias/secuencia-<id>.json`.
-- Si el primer fotograma no tiene vídeo previo, la portada se genera a partir de la imagen procesada. Los fotogramas y originales que ya estaban en Drive se mueven a las subcarpetas sin volver a subirse.
+- Al guardar se crea un vídeo con `canvas.captureStream` y `MediaRecorder`, y una carpeta visible en la raíz con el título de la animación. El vídeo aplica holds, repeticiones (1-3) y fondo negro/blanco. Dentro quedan el vídeo, `Fotogramas/` y `Originales/`; el JSON de la secuencia sigue en `_interno/secuencias/secuencia-<id>.json`.
+- La portada se elige en el editor y se usa para la miniatura de la biblioteca. Los fotogramas y originales que ya estaban en Drive se mueven a las subcarpetas sin volver a subirse.
 - Subida de GIF y vídeo (MP4/MOV/WebM): el original en `originales`, la miniatura en
   `miniaturas`; en la ficha de la obra, reproductor con reproducir/pausa, velocidad
   (0,25x–2x) y paso de fotograma.
@@ -72,7 +73,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (174 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, borradores locales, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, filtros y fechas románticas).
+- Unitarias con Vitest: `npm run test` (188 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, holds/tramos, historial y almacenamiento de borradores, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, filtros y fechas románticas).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
 - E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, y guardarla en una carpeta con vídeo, fotogramas y originales. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
 

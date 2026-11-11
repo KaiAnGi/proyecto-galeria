@@ -1,3 +1,4 @@
+import { totalTicks } from './frameTiming'
 import type { Frame } from './secuencias'
 
 export function sortFrames(frames: Frame[]): Frame[] {
@@ -28,5 +29,6 @@ export function removeFrame(frames: Frame[], frameId: string): Frame[] {
 
 export function sequenceDuration(frames: Frame[], fps: number): number {
   if (frames.length === 0) return 0
-  return frames.length / Math.min(24, Math.max(1, fps))
+  const ticks = totalTicks(frames.map((frame) => frame.hold ?? 1))
+  return ticks / Math.min(24, Math.max(1, fps))
 }

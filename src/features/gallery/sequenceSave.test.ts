@@ -40,6 +40,7 @@ vi.mock('../../lib/image/imageProcessor', () => ({
   imageExtension: vi.fn(() => 'webp'),
 }))
 
+import { blobToThumbnailDataUrl } from '../../lib/image/imageProcessor'
 import { ensureAnimationFolders } from '../drive/animationFolders'
 import { addFilesToFolder } from '../drive/collectionFolders'
 import { downloadFileAsBlob, trashFile, uploadBlob } from '../drive/driveImageClient'
@@ -102,7 +103,12 @@ describe('saveSequenceDraft', () => {
     const result = await saveSequenceDraft(draft)
 
     expect(ensureAnimationFolders).toHaveBeenCalledWith('token', 'draft-1', 'Olas / 1', undefined)
-    expect(exportSequenceVideo).toHaveBeenCalledWith([expect.any(Blob), expect.any(Blob)], 24, expect.any(Function))
+    expect(exportSequenceVideo).toHaveBeenCalledWith(
+      [expect.any(Blob), expect.any(Blob)],
+      24,
+      expect.any(Function),
+      { background: undefined, width: undefined, height: undefined },
+    )
     expect(uploadBlob).toHaveBeenCalledWith('token', expect.any(Blob), 'Olas 1.mp4', ['folder-1'], {
       kind: 'secuencia-video',
       id: 'draft-1',
@@ -173,6 +179,27 @@ describe('saveSequenceDraft', () => {
     expect(trashFile).toHaveBeenCalledWith('token', 'gal-c')
     expect(trashFile).toHaveBeenCalledWith('token', 'orig-c')
     expect(trashFile).toHaveBeenCalledWith('token', 'video-old')
+  })
+
+  it('expands holds and repeats for the exported video and uses the cover frame', async () => {
+    const draft: SequenceDraft = {
+      ...baseDraft([
+        { id: 'a', orden: 0, blob: new Blob(['a'], { type: 'image/webp' }) },
+        { id: 'b', orden: 1, hold: 2, blob: new Blob(['b'], { type: 'image/webp' }) },
+      ]),
+      portadaFrameId: 'b',
+      exportSettings: { repeats: 2, background: 'white', width: 720, height: 540 },
+    }
+
+    await saveSequenceDraft(draft)
+
+    expect(exportSequenceVideo).toHaveBeenCalledWith(
+      [expect.any(Blob), expect.any(Blob), expect.any(Blob), expect.any(Blob), expect.any(Blob), expect.any(Blob)],
+      24,
+      expect.any(Function),
+      { background: 'white', width: 720, height: 540 },
+    )
+    expect(blobToThumbnailDataUrl).toHaveBeenCalledWith(expect.any(Blob))
   })
 
   it('trashes uploaded files if saving fails partway through', async () => {

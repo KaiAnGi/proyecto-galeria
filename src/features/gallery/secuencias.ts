@@ -1,6 +1,7 @@
 export interface Frame {
   id: string
   orden: number
+  hold?: number
   drive: { originalId?: string; galeriaId: string }
 }
 
@@ -18,6 +19,14 @@ export interface Secuencia {
   videoMime?: string
   miniatura: string
   coleccionIds?: string[]
+  portadaFrameId?: string
+  bucleRango?: [number, number]
+  exportSettings?: {
+    width?: number
+    height?: number
+    repeats?: number
+    background?: 'black' | 'white'
+  }
 }
 
 export function withUpdatedAt<T extends object>(value: T): T & { updatedAt: string } {
