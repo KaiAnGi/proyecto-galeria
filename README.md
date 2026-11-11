@@ -64,7 +64,7 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
   murciélago, luna), iconos propios, cursor de corazón en escritorio y animaciones
   cortas que respetan `prefers-reduced-motion`. Favicon propio (calavera con lazo).
 - Toda la tipografía de interfaz vive en `src/i18n/es.ts`; se extrajeron los textos
-  que estaban sueltos en Colecciones, ColeccionDetail y Pencil test.
+  que estaban sueltos en Colecciones, ColeccionDetail y Animaciones.
 - Calendario privado en Google Calendar: la app crea un calendario secundario propio y guarda su ID en `_interno/config.json`. Las entregas con fecha límite se crean, actualizan o borran allí y los eventos nuevos se crean directamente en Google Calendar; los eventos personalizados antiguos que vivían en Drive se migran una sola vez. Borrar un evento se puede deshacer durante 7 s y después es definitivo, porque Google Calendar no tiene papelera.
 - Contador "Juntos desde..." con los días juntos y cuenta atrás al siguiente
   mes-versario, más un banner especial en mes-versarios y cumpleaños. Vive dentro del calendario.

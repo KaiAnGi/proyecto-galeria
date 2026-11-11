@@ -193,7 +193,7 @@
     hint: 'Hay algo escondido...',
   },
   pencil: {
-    title: 'Pencil Test',
+    title: 'Animaciones',
     back: 'Volver',
     create: 'Crear',
     pick: 'Elegir fotogramas',

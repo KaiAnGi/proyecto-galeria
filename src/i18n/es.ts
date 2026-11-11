@@ -319,7 +319,7 @@
   },
   pencil: {
     title: 'Animaciones',
-    kicker: 'Pencil test',
+    kicker: 'Fotograma a fotograma',
     back: 'Volver',
     loading: 'Revisando animaciones...',
     defaultTitle: 'Mi animación',
