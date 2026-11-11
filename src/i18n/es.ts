@@ -201,7 +201,10 @@
   palette: {
     title: 'Paleta',
     extract: 'Extraer colores',
+    extracting: 'Sacando los colores...',
     empty: 'Sin colores aún',
+    error: 'No he podido sacar los colores de esta imagen.',
+    unavailable: 'Esta obra no tiene una imagen de la que sacar colores.',
   },
   stats: {
     title: 'Estadísticas',

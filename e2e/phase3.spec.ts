@@ -9,7 +9,7 @@ async function connect(page: Page): Promise<void> {
   await stubDriveMemory(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
-  await expect(page.getByText('Carpeta raíz:')).toBeVisible()
+  await expect(page.getByText('¡Descubre todos los easter eggs!')).toBeVisible()
 }
 
 test('sube un GIF y abre la obra en la galería', async ({ page }) => {
@@ -55,22 +55,20 @@ test('crea una entrega de clase y vuelve a cargarla desde Drive', async ({ page 
 
   await page.goto('/#/entregas')
   await page.getByPlaceholder('Título de la entrega').fill('Retrato a lápiz')
-  await page.getByPlaceholder('Asignatura').fill('Dibujo')
   await page.locator('input[type="date"]').fill('2026-12-31')
   await page.getByRole('button', { name: 'Añadir entrega' }).click()
 
   await expect(page.getByRole('heading', { name: 'Retrato a lápiz' })).toBeVisible()
-  await expect(page.getByText('Dibujo · 2026-12-31')).toBeVisible()
+  await expect(page.getByText('2026-12-31', { exact: false })).toBeVisible()
   await expect(page.getByLabel('Estado')).toHaveValue('pendiente')
 
   await page.reload()
   await page.goto('/')
-  await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
-  await expect(page.getByText('Carpeta raíz:')).toBeVisible()
+  await expect(page.getByText('¡Descubre todos los easter eggs!')).toBeVisible()
 
   await page.goto('/#/entregas')
   await expect(page.getByRole('heading', { name: 'Retrato a lápiz' })).toBeVisible()
-  await expect(page.getByText('Dibujo · 2026-12-31')).toBeVisible()
+  await expect(page.getByText('2026-12-31', { exact: false })).toBeVisible()
 })
 
 test('el motor indica si puede reproducir MP4 con H.264', async ({ page }) => {

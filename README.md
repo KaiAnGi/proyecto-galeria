@@ -70,18 +70,19 @@ Galería privada de dibujos para una sola usuaria. Especificación completa en
   mes-versario, más un banner especial en mes-versarios y cumpleaños. Vive dentro del calendario.
 - La carta del calendario ocupa una sola pantalla sin scroll: horizontal en tablet/PC y vertical en móvil. Si Google rechaza la sesión o el permiso, se olvida el token y "Reintentar" vuelve a pedir acceso.
 - Carta escondida: cinco toques seguidos en Kuromi abren una carta de papel sobre la interfaz.
+- Paleta por obra: la ficha extrae hasta 6 colores dominantes de la imagen visible y los guarda en el JSON de la obra.
 - Los personajes oficiales de `public/` se usan solo en esta galería privada; no se redistribuyen.
 
 ## Pruebas
-- Unitarias con Vitest: `npm run test` (188 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, holds/tramos, historial y almacenamiento de borradores, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, filtros y fechas románticas).
+- Unitarias con Vitest: `npm run test` (191 pruebas: autenticación/sesión y scopes, datos/Drive, estructura y migración de carpetas, concurrencia, reintentos, carga parcial, detalle de colecciones, biblioteca y editor de animaciones, holds/tramos, historial y almacenamiento de borradores, guardado de vídeo/fotogramas/originales, colas de guardado y borrado, Google Calendar, ZIP, media, paleta, filtros y fechas románticas).
 - Comprobaciones de cierre: `npx tsc -p tsconfig.app.json --noEmit`, `npm run lint` y `npm run build`.
-- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, y guardarla en una carpeta con vídeo, fotogramas y originales. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
+- E2E con Playwright: `npm run test:e2e`, cuatro proyectos: `chromium`, `webkit`, `ipad` (WebKit con iPad gen 7) y `ecosia` (Chromium con user agent de Ecosia). Cubre crear y editar una animación sin tocar Drive, guardarla en una carpeta con vídeo, fotogramas y originales, y extraer la paleta de una obra. La grabación de vídeo se omite en el WebKit de Playwright porque esa compilación no incluye `MediaRecorder`; hay que probarla en Safari/iPad real.
 
 ## Pendiente
 - Prueba real en iPad/Safari y en Ecosia (checklist en `docs/qa-ipad.md`): renovación al primer toque, popup de permiso de Calendar, EXIF, grabación de vídeo con `MediaRecorder`, descarga del ZIP e instalación PWA.
 - Verificar si Google exige revisión para `calendar.app.created` y si el calendario creado se puede gestionar sin acceso a los personales.
 - Verificar en Safari real que el vídeo se reproduce desde la carpeta de Drive y que el formato elegido (MP4 o WebM) es compatible.
-- Fase 4 restante: estadísticas/racha, paleta por obra y moodboard.
+- Fase 4 restante: estadísticas/racha y moodboard.
 - Pruebas unitarias de la lógica de imagen (requieren simular `heic2any` y canvas).
 
 ## Desarrollo

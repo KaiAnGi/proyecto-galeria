@@ -8,7 +8,7 @@ async function connect(page: Page): Promise<void> {
   await stubDriveMemory(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
-  await expect(page.getByText('Carpeta raíz:')).toBeVisible()
+  await expect(page.getByText('¡Descubre todos los easter eggs!')).toBeVisible()
 }
 
 async function uploadOneDrawing(page: Page): Promise<void> {

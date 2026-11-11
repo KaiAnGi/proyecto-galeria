@@ -8,7 +8,7 @@ async function connect(page: Page): Promise<void> {
   await stubDriveMemory(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Conectar mi Drive' }).click()
-  await expect(page.getByText('Carpeta raíz:')).toBeVisible()
+  await expect(page.getByText('¡Descubre todos los easter eggs!')).toBeVisible()
 }
 
 async function smallTargets(page: Page): Promise<string[]> {
@@ -100,7 +100,7 @@ test('el proyecto iPad arranca con pantalla táctil', async ({ page }) => {
   expect(caps.width).toBeGreaterThanOrEqual(700)
   expect(caps.ua).toContain('iPad')
   expect((project.use as { defaultBrowserType?: string }).defaultBrowserType).toBe('webkit')
-  await expect(page.getByRole('heading', { name: 'Mi Galería' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kuromi likes your drawings!' })).toBeVisible()
 })
 
 test('el proyecto Ecosia arranca en un navegador Chromium', async ({ page }) => {
@@ -119,5 +119,5 @@ test('el proyecto Ecosia arranca en un navegador Chromium', async ({ page }) => 
   expect(info.ua).toContain('Chrome/')
   expect(info.engineChromium).toBe(true)
   expect((project.use as { defaultBrowserType?: string }).defaultBrowserType).toBe('chromium')
-  await expect(page.getByRole('heading', { name: 'Mi Galería' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kuromi likes your drawings!' })).toBeVisible()
 })

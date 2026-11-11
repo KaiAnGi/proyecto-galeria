@@ -12,6 +12,7 @@ import { saveObra } from '../features/gallery/persistence'
 import { enqueueSave } from '../features/gallery/saveQueue'
 import { queueObraTrash } from '../features/gallery/trashQueue'
 import { parseList } from '../features/gallery/filters'
+import { extractPalette, loadImage } from '../lib/color/palette'
 import type { Obra } from '../features/gallery/store'
 import { es } from '../i18n/es'
 import CuteComment from '../components/CuteComment'
@@ -29,6 +30,8 @@ export default function ObraDetail() {
   const [lastObraId, setLastObraId] = useState<string | undefined>(obra?.id)
   const [selectedArchivoId, setSelectedArchivoId] = useState<string | null>(null)
   const [compareOn, setCompareOn] = useState(false)
+  const [paletteBusy, setPaletteBusy] = useState(false)
+  const [paletteError, setPaletteError] = useState<string | null>(null)
 
   const selectedArchivo = obra?.archivos.find((a) => a.id === selectedArchivoId) ?? obra?.archivos[0]
   const isVideo = selectedArchivo?.tipo === 'video'
@@ -56,6 +59,8 @@ export default function ObraDetail() {
     setTagsDraft(obra?.tags.join(', ') ?? '')
     setSelectedArchivoId(null)
     setCompareOn(false)
+    setPaletteBusy(false)
+    setPaletteError(null)
   }
 
   if (!obra) {
@@ -115,6 +120,27 @@ export default function ObraDetail() {
   function saveEstado(estado: Obra['estado']) {
     if (!id || !obra || estado === obra.estado) return
     savePatch({ estado })
+  }
+
+  async function extractColors() {
+    if (!obra) return
+    const source = isVideo ? obra.miniatura : mediaUrl
+    if (!source) {
+      setPaletteError(es.palette.unavailable)
+      return
+    }
+    setPaletteBusy(true)
+    setPaletteError(null)
+    try {
+      const image = await loadImage(source)
+      const colors = extractPalette(image)
+      if (colors.length === 0) throw new Error('Empty palette')
+      savePatch({ paletaHex: colors })
+    } catch {
+      setPaletteError(es.palette.error)
+    } finally {
+      setPaletteBusy(false)
+    }
   }
 
   function handleTrash() {
@@ -190,6 +216,42 @@ export default function ObraDetail() {
         canCompare={canCompare}
         onToggleCompare={() => setCompareOn((v) => !v)}
       />
+
+      <section className="panel p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="font-display text-lg font-bold">{es.palette.title}</h2>
+          <button
+            type="button"
+            onClick={extractColors}
+            disabled={paletteBusy || !(isVideo ? obra.miniatura : mediaUrl)}
+            className="btn btn-soft"
+          >
+            {paletteBusy ? es.palette.extracting : es.palette.extract}
+          </button>
+        </div>
+        {obra.paletaHex && obra.paletaHex.length > 0 ? (
+          <ul className="flex flex-wrap gap-3">
+            {obra.paletaHex.map((hex) => (
+              <li key={hex} className="flex flex-col items-center gap-1">
+                <span
+                  role="img"
+                  aria-label={hex}
+                  className="h-12 w-16 rounded-xl border-2 border-[var(--border)] shadow-sm"
+                  style={{ backgroundColor: hex }}
+                />
+                <span className="text-[11px] text-[var(--muted)] font-mono">{hex}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">{es.palette.empty}</p>
+        )}
+        {paletteError && (
+          <p role="alert" aria-live="polite" className="mt-3 text-sm text-[var(--accent-soft)]">
+            {paletteError}
+          </p>
+        )}
+      </section>
 
       <section className="grid sm:grid-cols-2 gap-4">
         <div className="panel p-4">
