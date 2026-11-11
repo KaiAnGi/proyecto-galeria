@@ -501,6 +501,54 @@ details > summary::-webkit-details-marker {
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.4));
 }
 
+.frame-move {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.frame-move button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  color: var(--text);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.frame-move button:hover:not(:disabled) {
+  background: rgba(255, 79, 163, 0.16);
+  color: var(--accent-soft);
+}
+
+.frame-move button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.frame-move button:disabled {
+  opacity: 0.3;
+}
+
+.frame-move span {
+  min-width: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Carta escondida ---------- */
 
 .love-letter {

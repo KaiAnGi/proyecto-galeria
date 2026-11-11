@@ -136,7 +136,7 @@ export default function FrameTimeline({
                 if (element) itemsRef.current.set(index, element)
                 else itemsRef.current.delete(index)
               }}
-              className={`relative flex w-24 shrink-0 snap-start flex-col gap-1 rounded-xl p-1 transition-opacity ${
+              className={`relative flex w-32 shrink-0 snap-start flex-col gap-1 rounded-xl p-1 transition-opacity ${
                 current ? 'bg-[var(--surface)] ring-2 ring-[var(--accent)]' : ''
               } ${draggingIndex === index ? 'opacity-40' : ''}`}
             >
@@ -191,39 +191,37 @@ export default function FrameTimeline({
               >
                 <TrashIcon className="h-4 w-4" />
               </button>
-              <div className="flex items-center justify-between gap-0.5">
+              <div className="frame-move">
                 <button
                   type="button"
                   onClick={() => onMove(index, index - 1)}
                   disabled={index === 0 || disabled}
                   aria-label={es.pencil.moveBack}
-                  className="btn btn-soft min-h-11 min-w-11 px-1"
+                  title={es.pencil.moveBack}
                 >
                   <ChevronLeftIcon className="h-4 w-4" />
                 </button>
-                {item?.status === 'error' && onRetry ? (
-                  <button
-                    type="button"
-                    onClick={() => onRetry(frame)}
-                    disabled={disabled}
-                    aria-label={es.pencil.retryFrame}
-                    className="btn btn-soft min-h-11 min-w-11 px-1 text-xs"
-                  >
-                    ↻
-                  </button>
-                ) : (
-                  <span className="text-xs text-[var(--muted)]">{index + 1}</span>
-                )}
+                <span>{index + 1}</span>
                 <button
                   type="button"
                   onClick={() => onMove(index, index + 1)}
                   disabled={index === frames.length - 1 || disabled}
                   aria-label={es.pencil.moveForward}
-                  className="btn btn-soft min-h-11 min-w-11 px-1"
+                  title={es.pencil.moveForward}
                 >
                   <ChevronRightIcon className="h-4 w-4" />
                 </button>
               </div>
+              {item?.status === 'error' && onRetry && (
+                <button
+                  type="button"
+                  onClick={() => onRetry(frame)}
+                  disabled={disabled}
+                  className="btn btn-soft min-h-11 w-full px-2 text-xs"
+                >
+                  {es.pencil.retryFrame}
+                </button>
+              )}
             </li>
           )
         })}
