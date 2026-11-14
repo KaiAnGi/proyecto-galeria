@@ -262,7 +262,7 @@
       anniversaryBody: (n: number) =>
         n === 1 ? '1 día juntos y todos los que nos quedan.' : `${n} días juntos y todos los que nos quedan.`,
       birthdayPartnerTitle: '¡Feliz cumpleaños, Demi!',
-      birthdayPartnerBody: 'Hoy se celebra el día en que llegaste al mundo. Qué suerte la mía.',
+      birthdayPartnerBody: 'Hoy se celebra el día en que llegaste al mundo. OLE.',
       birthdayAuthorTitle: 'Feliz cumpleaños, Kai',
       birthdayAuthorBody: '¡Hoy es mi cumple!',
     },
@@ -271,7 +271,7 @@
       kicker: 'Una carta escondida',
       title: 'Para ti',
       greeting: 'Oli amor!:',
-      body: '¡Chorprecha! Quién diría que pulsar cinco veces en la Kuromi valdría de algo. Probablemente te lo haya dicho yo, a mí también se me da mal guardar sorpresas por mucho tiempo. Ups.\n ¡Me encantan tus dibujos! La dedicación que les pones, los pequeños detalles en los que te fijas y como construyes tus mundos, así que quería que este espacio te fuese útil de alguna manera, no un programa ñoño de ver una vez y a la mierda. Pero también quería dejarte aquí un pedacito de mí, algo que pudieses leer cuando te sientes de bajón.\n Me hace mucha ilusión que me dejes formar parte de tu vida. Eres una persona super valiosa, en general, y ojalá los malos pensamientos no te nublen la capacidad de ver lo que yo veo. También sé que te esfuerzas mucho, para todo, y me gusta recordártelo las veces que se te olvida. Gracias por compartirte conmigo y por elegirme. Haces que las cosas del día a día sean especiales. Espero que esta tontería te acompañe y que, cuando vuelvas a ella, encuentres también un poquito de todo el cariño con el que la hice. Te quiero mucho <3',
+      body: '¡Chorprecha! Quién diría que pulsar cinco veces en la Kuromi valdría de algo. Probablemente te lo haya dicho yo, a mí también se me da mal guardar sorpresas por mucho tiempo. Ups.\n ¡Me encantan tus dibujos! La dedicación que les pones, los pequeños detalles en los que te fijas y como construyes tus mundos, así que quería que este espacio te fuese útil de alguna manera, no un programa ñoño de ver una vez y a la mierda. Pero también quería dejarte aquí un pedacito de mí, algo que pudieses leer cuando te sientes de bajón.\n Me hace mucha ilusión que me dejes formar parte de tu vida. Eres una persona super valiosa, en general, y ojalá los malos pensamientos no te nublen la capacidad de ver lo que yo veo. También sé que te esfuerzas mucho, para todo, y me gusta recordártelo las veces que se te olvida. Gracias por compartirte conmigo y por elegirme. Haces que las cosas del día a día sean especiales. Espero que esta tontería te acompañe y que, cuando vuelvas a ella, encuentres también un poquito de todo el cariño con el que la hice. Te quiero mucho, amor <3',
       signature: 'Con todo mi cariño,\nKai',
       close: 'Cerrar',
     },
