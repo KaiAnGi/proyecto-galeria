@@ -6,8 +6,7 @@ import { useGalleryStore, type CalendarioEvento } from '../features/gallery/stor
 import {
   authorBirthday,
   daysTogether,
-  isMonthiversary,
-  nextMonthiversary,
+  monthiversaryDates,
   partnerBirthday,
   relationshipStartDate,
 } from '../features/romance/dates'
@@ -249,27 +248,22 @@ export default function CalendarLetter({ open, onClose }: Props) {
     })
     const start = relationshipStartDate()
     const anniversary = new Date(year, start.getMonth(), start.getDate())
-    add(isoDate(anniversary), {
-      key: 'anniv-' + year,
-      type: 'anniversary',
-      title: es.calendar.type.anniversary,
-    })
-    if (isMonthiversary(now)) {
-      add(isoDate(now), {
-        key: 'month-' + year + '-' + now.getMonth(),
+    if (anniversary.getTime() >= start.getTime()) {
+      add(isoDate(anniversary), {
+        key: 'anniv-' + year,
+        type: 'anniversary',
+        title: es.calendar.type.anniversary,
+      })
+    }
+    for (const monthiversary of monthiversaryDates(year)) {
+      const iso = isoDate(monthiversary)
+      add(iso, {
+        key: 'month-' + iso,
         type: 'monthiversary',
         title: es.calendar.type.monthiversary,
-        detail: es.romance.daysTogether(daysTogether(now)),
+        detail:
+          monthiversary <= now ? es.romance.daysTogether(daysTogether(monthiversary)) : undefined,
       })
-    } else {
-      const next = nextMonthiversary(now)
-      if (next.getFullYear() === year && next.getMonth() === now.getMonth()) {
-        add(isoDate(next), {
-          key: 'month-next-' + isoDate(next),
-          type: 'monthiversary',
-          title: es.calendar.type.monthiversary,
-        })
-      }
     }
 
     for (const entrega of entregas) {

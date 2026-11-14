@@ -13,14 +13,18 @@ export default function AnniversaryBanner() {
       ? es.romance.banner.birthdayPartnerTitle
       : kind === 'birthday-author'
         ? es.romance.banner.birthdayAuthorTitle
-        : es.romance.banner.monthiversaryTitle
+        : kind === 'anniversary'
+          ? es.romance.banner.anniversaryTitle
+          : es.romance.banner.monthiversaryTitle
 
   const body =
     kind === 'birthday-partner'
       ? es.romance.banner.birthdayPartnerBody
       : kind === 'birthday-author'
         ? es.romance.banner.birthdayAuthorBody
-        : es.romance.banner.monthiversaryBody(daysTogether(now))
+        : kind === 'anniversary'
+          ? es.romance.banner.anniversaryBody(daysTogether(now))
+          : es.romance.banner.monthiversaryBody(daysTogether(now))
 
   return (
     <aside

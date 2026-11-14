@@ -258,9 +258,12 @@
       monthiversaryTitle: '¡Feliz mes-versario!',
       monthiversaryBody: (n: number) =>
         n === 1 ? '1 día a tu lado y todos los que nos quedan.' : `${n} días a tu lado y todos los que nos quedan.`,
-      birthdayPartnerTitle: '¡Feliz cumpleaños, mi amor!',
+      anniversaryTitle: '¡Feliz aniversario!',
+      anniversaryBody: (n: number) =>
+        n === 1 ? '1 día juntos y todos los que nos quedan.' : `${n} días juntos y todos los que nos quedan.`,
+      birthdayPartnerTitle: '¡Feliz cumpleaños, Demi!',
       birthdayPartnerBody: 'Hoy se celebra el día en que llegaste al mundo. Qué suerte la mía.',
-      birthdayAuthorTitle: 'Hoy es mi cumpleaños',
+      birthdayAuthorTitle: 'Feliz cumpleaños, Kai',
       birthdayAuthorBody: 'No necesito regalos: ya te tengo a ti.',
     },
     letter: {
@@ -290,8 +293,8 @@
     type: {
       monthiversary: 'Mes-versario',
       anniversary: 'Aniversario',
-      birthdayPartner: 'Cumpleaños de mi amor',
-      birthdayAuthor: 'Mi cumpleaños',
+      birthdayPartner: 'Cumpleaños de Demi',
+      birthdayAuthor: 'Cumpleaños de Kai',
       entrega: 'Entrega de clase',
       custom: 'Evento personalizado',
       google: 'Google Calendar',
